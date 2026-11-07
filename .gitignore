@@ -1,0 +1,17 @@
+# Third-party / not ours
+QueensDomain-Win64-Shipping*.zip
+tools/pydeps/
+backups/
+
+# Downloaded UEVR profile: ignore everything except our script
+QueensDomain-Win64-Shipping/*
+!QueensDomain-Win64-Shipping/scripts/
+QueensDomain-Win64-Shipping/scripts/*
+!QueensDomain-Win64-Shipping/scripts/queens_domain_vr.lua
+!QueensDomain-Win64-Shipping/scripts/libs/
+QueensDomain-Win64-Shipping/scripts/libs/*
+!QueensDomain-Win64-Shipping/scripts/libs/motion_melee.lua
+
+# Local noise
+*.log
+__pycache__/
