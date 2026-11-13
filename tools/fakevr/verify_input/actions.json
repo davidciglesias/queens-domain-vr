@@ -1,0 +1,77 @@
+{
+ "default_bindings": [
+  {
+   "controller_type": "oculus_touch",
+   "binding_url": "bindings_oculus_touch.json"
+  }
+ ],
+ "actions": [
+  {
+   "name": "/actions/main/in/trigger_click",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/trigger_value",
+   "type": "vector1"
+  },
+  {
+   "name": "/actions/main/in/grip_click",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/grip_value",
+   "type": "vector1"
+  },
+  {
+   "name": "/actions/main/in/a",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/b",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/x",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/y",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/joy",
+   "type": "vector2"
+  },
+  {
+   "name": "/actions/main/in/joy_click",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/system",
+   "type": "boolean"
+  },
+  {
+   "name": "/actions/main/in/pose_raw",
+   "type": "pose"
+  },
+  {
+   "name": "/actions/main/in/pose_tip",
+   "type": "pose"
+  },
+  {
+   "name": "/actions/main/in/pose_grip",
+   "type": "pose"
+  },
+  {
+   "name": "/actions/main/out/haptic",
+   "type": "vibration"
+  }
+ ],
+ "action_sets": [
+  {
+   "name": "/actions/main",
+   "usage": "leftright"
+  }
+ ],
+ "localization": []
+}

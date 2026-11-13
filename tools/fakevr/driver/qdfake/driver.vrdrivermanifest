@@ -1,0 +1,10 @@
+{
+	"alwaysActivate": false,
+	"name" : "qdfake",
+	"directory" : "",
+	"resourceOnly" : false,
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}

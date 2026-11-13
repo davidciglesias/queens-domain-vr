@@ -1,0 +1,20 @@
+{
+	"controller_type": "qdfake_hmd",
+	"description": "fake headset: proximity -> UEVR HeadsetOnHead",
+	"name": "qdfake hmd (UEVR)",
+	"bindings": {
+		"/actions/default": {
+			"sources": [
+				{
+					"path": "/user/head/proximity",
+					"mode": "button",
+					"inputs": {
+						"click": {
+							"output": "/actions/default/in/headsetonhead"
+						}
+					}
+				}
+			]
+		}
+	}
+}

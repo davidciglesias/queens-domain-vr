@@ -1,0 +1,36 @@
+{
+	"jsonid": "input_profile",
+	"controller_type": "qdfake_hmd",
+	"input_bindingui_mode": "hmd",
+	"input_source": {
+		"/input/system": {
+			"type": "button",
+			"click": true,
+			"binding_image_point": [
+				60,
+				60
+			],
+			"order": 1
+		},
+		"/proximity": {
+			"type": "button",
+			"binding_image_point": [
+				60,
+				60
+			]
+		},
+		"/pose/raw": {
+			"type": "pose",
+			"binding_image_point": [
+				60,
+				60
+			]
+		}
+	},
+	"default_bindings": [
+		{
+			"app_key": "steam.app.1799840",
+			"binding_url": "qdfake_hmd_binding_uevr.json"
+		}
+	]
+}
