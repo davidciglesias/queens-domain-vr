@@ -1089,85 +1089,78 @@ function meleeLogNotify(phase)
 	meleeLog("OnNotify" .. phase .. " " .. meleeHitboxState())
 end
 
--- test 19: motion-driven hit window (motion_hit_window). The game opens the hit window from the attack animation 0.25 s
--- (sword) / 0.6 s (club) after the swing commits, when the hand has already stopped. Instead: "Activate Hitbox" right
--- after our attack call, keep it open while the hand moves fast (min HIT_MIN, max HIT_MAX), then DeactivateHitbox.
--- The game's own Activate within HIT_BLOCK s of our open (= its late window for that attack) and its Deactivate while
--- ours is open are skipped (pre-hook returns false). "[MELEE] HIT ..." log lines, incl. every HandleHit.
+-- test 19 / plan step 10: motion-driven hit window (motion_hit_window). The game opens the hit window from the attack
+-- animation (PlayerHitboxState notify) 0.15-0.6 s after the swing commits, when the hand has already stopped. Instead we
+-- call pawn:ActivateHitbox right after our attack call (it traces the reparented box at once and then every frame, one
+-- hit per enemy per activation), keep it open while the hand moves fast (min HIT_MIN, max HIT_MAX), then
+-- pawn:DeactivateHitbox. The game's next notify Begin within HIT_BLOCK s of our open (= its late window for that attack)
+-- and its notify End while ours is open are skipped (pre-hook returns false); dash-hitbox notifies always pass.
+-- Step 10 finding: a UFunction this script hooks can't be called from our tick ("resource deadlock would occur", the
+-- call doesn't run), so never hook ActivateHitbox/DeactivateHitbox or anything they call (hit damage callbacks).
+-- That includes anything a hit runs synchronously (the hit-stop timeline update): the error unwinds through game code.
+-- Hit feedback: poll #pawn.EnemiesHitThisSwipe while our window is open (array read only then, <= HIT_MAX s).
 local HIT_MIN, HIT_MAX, HIT_BLOCK = 0.2, 0.8, 1.5
-local hitWin = {weapon = nil, t = 0.0, openClock = -100.0, ours = false, hits = 0, blocked = 0}
+local hitWin = {open = false, t = 0.0, openClock = -100.0, hits = 0, blocked = 0, blockArmed = false}
 local function hitWinOn() return configui.getValue("motion_hit_window") == true and configui.getValue("6dof_right") == true end
-local function hbCollision()
-	local pawn = api:get_local_pawn(0)
-	if pawn == nil then return "ce=?" end
-	local a, b = "-", "-"
-	pcall(function() a = tostring(pawn.NormalHitbox:GetCollisionEnabled()) end)
-	pcall(function() b = tostring(pawn.DefaultHitbox:GetCollisionEnabled()) end)
-	return "ce=" .. a .. "/" .. b
+local function hitWinPollHits()
+	local n = 0
+	pcall(function() local a = api:get_local_pawn(0).EnemiesHitThisSwipe; if a ~= nil then n = #a end end)
+	if n > hitWin.hits then
+		hitWin.hits = n
+		if configui.getValue("hit_haptics") ~= false then
+			pcall(function() uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.09, 180, 0.9) end)
+		end
+		meleeLog(string.format("HIT landed t=%.2f enemies=%d", hitWin.t, n))
+	end
 end
 local function hitWinClose(why)
-	local w = hitWin.weapon
-	if w == nil then return end
-	hitWin.weapon = nil
-	hitWin.ours = true
-	local ok, err = pcall(function() w:DeactivateHitbox() end)
-	hitWin.ours = false
-	meleeLog(string.format("HIT window close (%s) dur=%.2f hits=%d blocked=%d %s%s", why, hitWin.t, hitWin.hits, hitWin.blocked, hbCollision(), ok and "" or (" err=" .. tostring(err))))
+	if not hitWin.open then return end
+	hitWin.open = false
+	local ok, err = pcall(function() api:get_local_pawn(0):DeactivateHitbox() end)
+	meleeLog(string.format("HIT window close (%s) dur=%.2f hits=%d blocked=%d%s", why, hitWin.t, hitWin.hits, hitWin.blocked, ok and "" or (" err=" .. tostring(err))))
 end
-local function hitWinOpen(weapon, why)
+local function hitWinOpen(weapon, why, primary)
 	if weapon == nil or not hitWinOn() then return end
-	if hitWin.weapon ~= nil then hitWinClose("reopen") end
+	if hitWin.open then hitWinClose("reopen") end
 	pcall(attachHitboxesToWeaponTip)
-	hitWin.ours = true
-	local ok, err = pcall(function() weapon["Activate Hitbox"](weapon) end)
-	hitWin.ours = false
+	local ok, err = pcall(function() api:get_local_pawn(0):ActivateHitbox(primary ~= false, false) end)
 	if not ok then meleeLog("HIT activate error " .. tostring(err)) return end
-	hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked = weapon, 0.0, meleeClock, 0, 0
-	hitWin.blockArmed = true -- test 20: skip only the next game activation (this attack's), not a later trigger attack
-	meleeLog("HIT window open (" .. why .. ") " .. hbCollision())
+	hitWin.open, hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked = true, weapon, 0.0, meleeClock, 0, 0
+	hitWinPollHits() -- ActivateHitbox traces at once
+	hitWin.blockArmed = true -- skip only the next game notify window (this attack's), not a later trigger attack
+	meleeLog("HIT window open (" .. why .. ")")
 end
 local function hitWinTick(delta)
-	if hitWin.weapon == nil then return end
+	if not hitWin.open then return end
 	hitWin.t = hitWin.t + delta
+	hitWinPollHits()
 	if activeWeapon ~= hitWin.weapon then hitWinClose("weapon changed")
 	elseif hitWin.t >= HIT_MAX then hitWinClose("max")
 	elseif hitWin.t >= HIT_MIN and (swingDetector.speed or 0) < swingDetector.rearmSpeed then hitWinClose("slow") end
 end
 -- hooks (registered from hookFuntionsForRuntimeGeneratedClasses); pre-hook returning false skips the game's call
 function hookHitWindow()
-	local cls = "BlueprintGeneratedClass /Game/Items/Weapons/WeaponScriptBase.WeaponScriptBase_C"
-	local okA = hook_function(cls, "Activate Hitbox", false, function(fn, obj, locals, result)
-		if hitWin.ours then return end
+	local ncls = "BlueprintGeneratedClass /Game/Player/PlayerHitboxState.PlayerHitboxState_C"
+	local okB = hook_function(ncls, "Received_NotifyBegin", false, function(fn, obj, locals, result)
+		if not hitWinOn() then return end
+		local dash = false
+		pcall(function() dash = obj.Wing_Dash_Hitbox == true end)
 		local dt = meleeClock - hitWin.openClock
-		if hitWinOn() and dt < HIT_BLOCK and hitWin.blockArmed then
+		if not dash and hitWin.blockArmed and dt < HIT_BLOCK then
 			hitWin.blockArmed = false
 			hitWin.blocked = hitWin.blocked + 1
-			meleeLog(string.format("HIT game Activate skipped dt=%.2f", dt))
+			meleeLog(string.format("HIT game window skipped dt=%.2f", dt))
 			return false
 		end
-		meleeLog(string.format("HIT game Activate dt=%.2f %s", dt, hbCollision()))
+		meleeLog(string.format("HIT game window dt=%.2f dash=%s", dt, tostring(dash)))
 	end, nil, false)
-	local okD = hook_function(cls, "DeactivateHitbox", false, function(fn, obj, locals, result)
-		if hitWin.ours then return end
-		if hitWin.weapon ~= nil and hitWinOn() then
-			meleeLog(string.format("HIT game Deactivate skipped (ours open %.2f s)", hitWin.t))
+	local okE = hook_function(ncls, "Received_NotifyEnd", false, function(fn, obj, locals, result)
+		if hitWin.open and hitWinOn() then
+			meleeLog(string.format("HIT game window end skipped (ours open %.2f s)", hitWin.t))
 			return false
 		end
 	end, nil, false)
-	local okH = hook_function(cls, "HandleHit", false, nil, function(fn, obj, locals, result)
-		hitWin.hits = hitWin.hits + 1
-		local dmg = "?"
-		pcall(function() dmg = tostring(locals.Successfully_Damaged) end)
-		-- test 20: hit haptics on the weapon hand (hit_haptics): strong on damage, light on any other contact
-		if configui.getValue("hit_haptics") ~= false and obj == activeWeapon then
-			pcall(function()
-				if locals.Successfully_Damaged == true then uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.09, 180, 0.9)
-				elseif locals.HitAnything == true then uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.04, 220, 0.35) end
-			end)
-		end
-		meleeLog(string.format("HIT HandleHit sinceOpen=%.2f ourOpen=%s damaged=%s", meleeClock - hitWin.openClock, tostring(hitWin.weapon ~= nil), dmg))
-	end, false)
-	meleeLog("HIT hooks activate=" .. tostring(okA) .. " deactivate=" .. tostring(okD) .. " handleHit=" .. tostring(okH))
+	meleeLog("HIT hooks notifyBegin=" .. tostring(okB) .. " notifyEnd=" .. tostring(okE))
 end
 
 local function meleeFire(speed, source)
@@ -1240,7 +1233,7 @@ local function l2StabFire(speed, source)
 	if not ok then meleeLog("L2 stab error " .. tostring(err)) return end
 	l2StabWeapon = activeWeapon
 	l2StabReleaseIn = L2_STAB_RELEASE
-	hitWinOpen(activeWeapon, "L2 stab")
+	hitWinOpen(activeWeapon, "L2 stab", false)
 	meleeLog(string.format("L2 stab -> AltAttackPressed %s out=%.2f %s %s speed=%.2f", source, out, axTxt, stTxt, speed))
 end
 local function l2StabRelease(delta)
