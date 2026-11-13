@@ -17,7 +17,7 @@ Pristine copies (ignored by git): backups/queens_domain_vr.lua.orig-071126 (curr
 - Notify hooks (hookFuntionsForRuntimeGeneratedClasses, WeaponScriptBase_C) re-attach hitboxes and log.
 - Trigger: on_xinput_get_state callback: right = AttackPressed/Released, left = AltAttack*. Works whether motion is on or off.
 - L2 (frame_layout + l2_native_dodge): with l2_stab_gesture + 6dof_right, L2 only arms (l2StabArmed, l2StabSeen); checkMeleeSwing sends a fired stroke to l2StabFire instead of meleeFire: needs (stab_outward 0 = off) and signed stabAxisAlign (|cos| stroke dir vs weapon long axis hbCache.axis, world) >= stab_axis, then startNativeDodge(0,"L2stab") (AltAttackPressed), l2StabRelease ~0.1 s later. Else L2 press = startNativeDodge directly.
-- Hit window (motion_hit_window, step 10): hitWinOpen/hitWinClose/hitWinTick/hitWinPollHits call pawn:ActivateHitbox/DeactivateHitbox (never hook those: tick deadlock); hookHitWindow pre-hooks PlayerHitboxState_C Received_NotifyBegin/End to skip the game's late window. Detector .speed = latest hand speed.
+- Hit window (motion_hit_window, step 10): hitWinOpen/hitWinClose/hitWinTick/hitWinPollHits call pawn:ActivateHitbox/DeactivateHitbox (never hook those: tick deadlock); hookHitWindow pre-hooks PlayerHitboxState_C Received_NotifyBegin/End to skip the game's late window. Detector .speed = latest hand speed; hitWinOpen skips when it is below rearmSpeed (buffered rush/post-dash -> game window). attachHitboxesToWeaponTip: bounds from StaticMesh or SkeletalMesh (skeletal weapons via visuals SocketComp).
 - Detector lastOutward = share of the committed run's travel away from the head (thrust ~0.6+, sideways swing ~0.2, chop < 0); in play swipes still gave 0.4-0.8. lastDirX/Y/Z = unit net run direction (tracking), lastStraight = net/path.
 
 ## Crosshair / aim (updateAimDot, every pre-tick)
@@ -77,8 +77,8 @@ controllers.getController(0 left, 1 right, 2 head); vr.get_pose(index, Vector3f,
 - Tunables on the module table (live via QD.ik.X): DROP, BACK, SCALE, DEAD, RATE, DRIFT, REACH, MAX_PULL. State QD.ik.st (rig, mesh, bodyYaw, hidden). Log tag "[IK]".
 
 ## Key lines (generated)
-6dof_right checks: 261 467 669 689 702 782 1104 1297 1345 2511 2645 2952 2985 
-Attack calls: 1177 1191 1246 1257 1604 2957 2976 3003 3020 3026 3058 3072 3076 
+6dof_right checks: 261 467 669 689 702 782 1108 1307 1355 2521 2655 2962 2995 
+Attack calls: 1187 1201 1256 1267 1614 2967 2986 3013 3030 3036 3068 3082 3086 
 Notify hooks: 368 370 379 381 
 
 ## Functions in queens_domain_vr.lua (generated: line range, name)
@@ -101,132 +101,132 @@ Notify hooks: 368 370 379 381
 668-685 disbaleAttackCooldown
 688-699 disbaleMeleeFX
 701-713 speedupAttackComboAnims
-781-885 attachHitboxesToWeaponTip
-890-906 dbgEnsure
-907-911 dbgHide
-912-942 dbgLogPositions
-943-974 updateDebugHitboxes
-997-1009 T20.S6.mult
-1010-1021 chargeInfo
-1028-1048 chargeBarEnsure
-1049-1075 updateChargeBars
-1076-1078 meleeLog
-1080-1086 meleeHitboxState
-1088-1090 meleeLogNotify
-1104-1104 hitWinOn
-1105-1115 hitWinPollHits
-1116-1121 hitWinClose
-1122-1132 hitWinOpen
-1133-1140 hitWinTick
-1142-1164 hookHitWindow
-1166-1193 meleeFire
-1201-1218 stabAxisAlign
-1219-1238 l2StabFire
-1239-1247 l2StabRelease
-1249-1262 meleeRelease
-1265-1291 T20.S6.tick
-1293-1341 checkMeleeSwing
-1343-1355 register_key_bind
-1358-1362 meleeReportError
-1368-1372 rotToQuat
-1373-1376 qmul
-1377-1386 quatToRot
-1387-1397 hudRotation
-1404-1417 applyHpHudTransform
-1426-1466 applyItemHudTransform
-1470-1491 hmdFollowDiag
-1495-1505 applyLateUpdate
-1509-1531 hmdPosDiag
-1535-1545 updateKnifeModelVisibility
-1556-1574 restoreDodgeFacing
-1576-1608 startNativeDodge
-1614-1614 hudLog
-1615-1625 widgetInfo
-1626-1642 dumpTree
-1643-1668 hudDump
-1669-1682 hudDumpTick
-1683-1684 register_key_bind
-1685-1714 meshDump
-1715-1717 register_key_bind
-1718-1727 openInventory
-1728-1736 register_key_bind
-1737-1739 aimDotEnabled
-1740-1743 hideAimDot
-1757-1757 xhairWanted
-1758-1763 xhairHud
-1764-1767 xhairHide
-1768-1782 xhairCanvas
-1783-1817 xhairEnsure
-1818-1864 xhairCreate
-1865-1887 xhairPlace
-1888-1984 updateAimDot
-1986-2023 attachStatusBarOnce
-2026-2060 attachHealthBarOnce
-2062-2096 attachWeaponChargeBarOnce
-2099-2133 attachRootElementOnce
-2136-2163 attachAmmoBarOnce
-2165-2207 attachConsumableBarOnce
-2210-2240 attachCompassOnce
-2246-2260 applyCompassOffset
-2264-2286 applyPlainWeaponMaterial
-2294-2303 fpfovTarget
-2304-2325 fpfovApply
-2339-2362 mpcDump
-2363-2367 mpcDumpTick
-2372-2376 qdlog
-2391-2391 QD.dev.v3
-2392-2392 QD.dev.r3
-2393-2409 QD.dev.state
-2410-2422 QD.dev.items
-2423-2430 QD.dev.weapons
-2431-2436 QD.dev.face
-2440-2467 T20.cleanupStale
-2469-2612 applyNormalModeSettings
-2615-2648 callback on_pre_engine_tick
-2652-2663 on_xinput_get_state
-2665-2674 initHands
-2677-2682 canInteract
-2694-2697 normalizeStickAxis
-2699-2758 beginDodge
-2760-2792 callback on_post_engine_tick
-2795-2843 tryDodge
-2845-2852 toggleInteractionLaser
-2863-2869 pollOneAction
-2870-2883 pollActions
-2903-2906 callback on_xinput_get_state
-2908-3164 callback on_xinput_get_state
-3221-3225 getCurrentAreaMusic
-3227-3245 getLastTouchedSaveArea
-3248-3333 isPickableFromDefaultLocationMathcesArea
-3335-3425 isPickableMathcesArea
-3427-3451 isPickablesMatachesLevelCode
-3453-3493 populateCurrentLevelPickablesDebug
-3496-3526 populateCurrentLevelPickables
-3529-3543 vectorSafeNormalize
-3546-3554 isPickableValidForPickup
-3567-3588 T20.pkItemCentre
-3589-3610 T20.pkRefresh
-3611-3614 T20.pkBeamHide
-3615-3633 T20.pkBeamEnsure
-3634-3646 T20.pkBeamPlace
-3648-3661 T20.pkOccluded
-3662-3666 pickupAssistClear
-3667-3671 T20.pkCamLoc
-3675-3685 T20.pkHookSpawns
-3686-3699 T20.pkMergeSpawned
-3700-3756 pickupAssistTick
-3758-3808 handleLeftHandPickables
-3812-3822 T20.pkAutoHold
-3824-4041 getPickupGripOffsets
-4043-4045 tryApplyPickupFinalGripRotation
-4047-4053 applyPickupFinalGripTransform
-4055-4058 cancelCurrentPickupFlyIn
-4060-4062 trySetRelativeRotationLerp
-4065-4105 pickupFlyInCallback
-4107-4120 startPickupLerpMovement
-4123-4241 attachPickableToHand
-4243-4289 checkIfPickablePickedup
-4291-4306 pickupPickable
-4315-4356 on_level_change
-4360-4364 uevrUtils.registerMontageChangeCallback
-4367-4401 callback on_post_engine_tick
+781-887 attachHitboxesToWeaponTip
+892-908 dbgEnsure
+909-913 dbgHide
+914-946 dbgLogPositions
+947-978 updateDebugHitboxes
+1001-1013 T20.S6.mult
+1014-1025 chargeInfo
+1032-1052 chargeBarEnsure
+1053-1079 updateChargeBars
+1080-1082 meleeLog
+1084-1090 meleeHitboxState
+1092-1094 meleeLogNotify
+1108-1108 hitWinOn
+1109-1119 hitWinPollHits
+1120-1125 hitWinClose
+1126-1142 hitWinOpen
+1143-1150 hitWinTick
+1152-1174 hookHitWindow
+1176-1203 meleeFire
+1211-1228 stabAxisAlign
+1229-1248 l2StabFire
+1249-1257 l2StabRelease
+1259-1272 meleeRelease
+1275-1301 T20.S6.tick
+1303-1351 checkMeleeSwing
+1353-1365 register_key_bind
+1368-1372 meleeReportError
+1378-1382 rotToQuat
+1383-1386 qmul
+1387-1396 quatToRot
+1397-1407 hudRotation
+1414-1427 applyHpHudTransform
+1436-1476 applyItemHudTransform
+1480-1501 hmdFollowDiag
+1505-1515 applyLateUpdate
+1519-1541 hmdPosDiag
+1545-1555 updateKnifeModelVisibility
+1566-1584 restoreDodgeFacing
+1586-1618 startNativeDodge
+1624-1624 hudLog
+1625-1635 widgetInfo
+1636-1652 dumpTree
+1653-1678 hudDump
+1679-1692 hudDumpTick
+1693-1694 register_key_bind
+1695-1724 meshDump
+1725-1727 register_key_bind
+1728-1737 openInventory
+1738-1746 register_key_bind
+1747-1749 aimDotEnabled
+1750-1753 hideAimDot
+1767-1767 xhairWanted
+1768-1773 xhairHud
+1774-1777 xhairHide
+1778-1792 xhairCanvas
+1793-1827 xhairEnsure
+1828-1874 xhairCreate
+1875-1897 xhairPlace
+1898-1994 updateAimDot
+1996-2033 attachStatusBarOnce
+2036-2070 attachHealthBarOnce
+2072-2106 attachWeaponChargeBarOnce
+2109-2143 attachRootElementOnce
+2146-2173 attachAmmoBarOnce
+2175-2217 attachConsumableBarOnce
+2220-2250 attachCompassOnce
+2256-2270 applyCompassOffset
+2274-2296 applyPlainWeaponMaterial
+2304-2313 fpfovTarget
+2314-2335 fpfovApply
+2349-2372 mpcDump
+2373-2377 mpcDumpTick
+2382-2386 qdlog
+2401-2401 QD.dev.v3
+2402-2402 QD.dev.r3
+2403-2419 QD.dev.state
+2420-2432 QD.dev.items
+2433-2440 QD.dev.weapons
+2441-2446 QD.dev.face
+2450-2477 T20.cleanupStale
+2479-2622 applyNormalModeSettings
+2625-2658 callback on_pre_engine_tick
+2662-2673 on_xinput_get_state
+2675-2684 initHands
+2687-2692 canInteract
+2704-2707 normalizeStickAxis
+2709-2768 beginDodge
+2770-2802 callback on_post_engine_tick
+2805-2853 tryDodge
+2855-2862 toggleInteractionLaser
+2873-2879 pollOneAction
+2880-2893 pollActions
+2913-2916 callback on_xinput_get_state
+2918-3174 callback on_xinput_get_state
+3231-3235 getCurrentAreaMusic
+3237-3255 getLastTouchedSaveArea
+3258-3343 isPickableFromDefaultLocationMathcesArea
+3345-3435 isPickableMathcesArea
+3437-3461 isPickablesMatachesLevelCode
+3463-3503 populateCurrentLevelPickablesDebug
+3506-3536 populateCurrentLevelPickables
+3539-3553 vectorSafeNormalize
+3556-3564 isPickableValidForPickup
+3577-3598 T20.pkItemCentre
+3599-3620 T20.pkRefresh
+3621-3624 T20.pkBeamHide
+3625-3643 T20.pkBeamEnsure
+3644-3656 T20.pkBeamPlace
+3658-3671 T20.pkOccluded
+3672-3676 pickupAssistClear
+3677-3681 T20.pkCamLoc
+3685-3695 T20.pkHookSpawns
+3696-3709 T20.pkMergeSpawned
+3710-3766 pickupAssistTick
+3768-3818 handleLeftHandPickables
+3822-3832 T20.pkAutoHold
+3834-4051 getPickupGripOffsets
+4053-4055 tryApplyPickupFinalGripRotation
+4057-4063 applyPickupFinalGripTransform
+4065-4068 cancelCurrentPickupFlyIn
+4070-4072 trySetRelativeRotationLerp
+4075-4115 pickupFlyInCallback
+4117-4130 startPickupLerpMovement
+4133-4251 attachPickableToHand
+4253-4299 checkIfPickablePickedup
+4301-4316 pickupPickable
+4325-4366 on_level_change
+4370-4374 uevrUtils.registerMontageChangeCallback
+4377-4411 callback on_post_engine_tick

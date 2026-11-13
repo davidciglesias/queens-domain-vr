@@ -781,18 +781,20 @@ local hbZeroRot = {Pitch = 0, Yaw = 0, Roll = 0}
 function attachHitboxesToWeaponTip()
 	if configui.getValue("6dof_right") ~= nil and configui.getValue("6dof_right") == true then
 		local pawn = api:get_local_pawn(0)
-		if pawn ~= nil and pawn.Arms ~= nil and 
-			activeWeaponMesh~= nil and activeWeaponMesh.StaticMesh ~= nil and 
-			activeWeaponMesh.StaticMesh.ExtendedBounds ~= nil and 
-			activeWeaponMesh.StaticMesh.ExtendedBounds.BoxExtent ~= nil and
-			activeWeaponMesh.StaticMesh.ExtendedBounds.Origin ~= nil then
-			-- prefer render bounds (StaticMesh:GetBounds) over ExtendedBounds (may be padded -> hitbox looked too far forward); cached per mesh
-			if hbCache.mesh ~= activeWeaponMesh.StaticMesh then
-				hbCache.mesh = activeWeaponMesh.StaticMesh
-				local ext = activeWeaponMesh.StaticMesh.ExtendedBounds
+		-- step 11: 28 of 106 weapons render via a SkeletalMeshComponent (visuals SocketComp); same GetBounds call, ImportedBounds fallback
+		local hbAsset = nil
+		if activeWeaponMesh ~= nil then pcall(function() hbAsset = activeWeaponMesh.StaticMesh or activeWeaponMesh.SkeletalMesh end) end
+		local hbExt = nil
+		if hbAsset ~= nil then pcall(function() hbExt = hbAsset.ExtendedBounds or hbAsset.ImportedBounds end) end
+		if pawn ~= nil and pawn.Arms ~= nil and
+			hbExt ~= nil and hbExt.BoxExtent ~= nil and hbExt.Origin ~= nil then
+			-- prefer render bounds (GetBounds) over ExtendedBounds (may be padded -> hitbox looked too far forward); cached per mesh
+			if hbCache.mesh ~= hbAsset then
+				hbCache.mesh = hbAsset
+				local ext = hbExt
 				local o, e = ext.Origin, ext.BoxExtent
 				local src = "extended"
-				local okB, b = pcall(function() return activeWeaponMesh.StaticMesh:GetBounds() end)
+				local okB, b = pcall(function() return hbAsset:GetBounds() end)
 				if okB and b ~= nil and b.BoxExtent ~= nil and b.BoxExtent.X ~= nil then o, e, src = b.Origin, b.BoxExtent, "render" end
 				hbCache.oX, hbCache.oY, hbCache.oZ = o.X, o.Y, o.Z
 				hbCache.ext.X, hbCache.ext.Y, hbCache.ext.Z = e.X, e.Y, e.Z
@@ -918,8 +920,10 @@ local function dbgLogPositions(tag)
 			return string.format("(%.1f,%.1f,%.1f)", l.X, l.Y, l.Z)
 		end
 		local ext = "nil"
-		if activeWeaponMesh ~= nil and activeWeaponMesh.StaticMesh ~= nil then
-			local b = activeWeaponMesh.StaticMesh.ExtendedBounds
+		local asset = nil
+		if activeWeaponMesh ~= nil then pcall(function() asset = activeWeaponMesh.StaticMesh or activeWeaponMesh.SkeletalMesh end) end
+		if asset ~= nil then
+			local b = asset.ExtendedBounds or asset.ImportedBounds
 			ext = string.format("origin=(%.1f,%.1f,%.1f) extent=(%.1f,%.1f,%.1f)", b.Origin.X, b.Origin.Y, b.Origin.Z, b.BoxExtent.X, b.BoxExtent.Y, b.BoxExtent.Z)
 		end
 		uevr.params.functions.log_info(string.format("[DBG] %s weaponMesh=%s normalHB=%s defaultHB=%s hbParentIsMesh=%s %s", tag, loc(activeWeaponMesh), loc(pawn and pawn.NormalHitbox), loc(pawn and pawn.DefaultHitbox), tostring(pawn ~= nil and pawn.NormalHitbox ~= nil and pawn.NormalHitbox.AttachParent == activeWeaponMesh), ext))
@@ -1121,6 +1125,12 @@ local function hitWinClose(why)
 end
 local function hitWinOpen(weapon, why, primary)
 	if weapon == nil or not hitWinOn() then return end
+	-- step 11: a buffered rush/post-dash swing fires after the hand stopped; ours would close at HIT_MIN and skip the
+	-- game's (rush) window, so the attack could never land. Hand not moving -> leave the game's window alone.
+	if (swingDetector.speed or 0) < swingDetector.rearmSpeed then
+		meleeLog(string.format("HIT window not opened (%s): hand slow %.2f -> game window", why, swingDetector.speed or 0))
+		return
+	end
 	if hitWin.open then hitWinClose("reopen") end
 	pcall(attachHitboxesToWeaponTip)
 	local ok, err = pcall(function() api:get_local_pawn(0):ActivateHitbox(primary ~= false, false) end)
