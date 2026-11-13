@@ -11,7 +11,20 @@ QueensDomain-Win64-Shipping/scripts/*
 !QueensDomain-Win64-Shipping/scripts/libs/
 QueensDomain-Win64-Shipping/scripts/libs/*
 !QueensDomain-Win64-Shipping/scripts/libs/motion_melee.lua
+!QueensDomain-Win64-Shipping/scripts/libs/qd_grip.lua
+!QueensDomain-Win64-Shipping/scripts/libs/qd_pickup.lua
 
 # Local noise
 *.log
 __pycache__/
+
+# Local reference material (not ours; re-create with: unzip Dumper7SDK.zip -d refs/; git clone uevrlib/uevr-mcp into refs/)
+Dumper7SDK.zip
+refs/
+
+# Fake headset build/runtime artefacts (tools/fakevr)
+tools/fakevr/venv/
+tools/fakevr/third_party/
+tools/fakevr/driver/obj/
+tools/fakevr/backup/
+tools/fakevr/__pycache__/
