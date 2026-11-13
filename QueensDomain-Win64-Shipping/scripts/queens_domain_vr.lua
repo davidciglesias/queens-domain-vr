@@ -1148,6 +1148,8 @@ local function hitWinOpen(weapon, why, primary)
 	local ok, err = pcall(function() api:get_local_pawn(0):ActivateHitbox(primary ~= false, false) end)
 	if not ok then meleeLog("HIT activate error " .. tostring(err)) return end
 	hitWin.open, hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked, hitWin.foes = true, weapon, 0.0, meleeClock, 0, 0, 0
+	hitWin.openDashing = false
+	pcall(function() hitWin.openDashing = api:get_local_pawn(0).Dashing == true end)
 	hitWinPollHits() -- ActivateHitbox traces at once
 	hitWin.blockArmed = true -- skip only the next game notify window (this attack's), not a later trigger attack
 	meleeLog("HIT window open (" .. why .. ")")
@@ -1167,7 +1169,10 @@ function hookHitWindow()
 		if not hitWinOn() then return end
 		local dash, dashing = false, nil
 		pcall(function() dash = obj.Wing_Dash_Hitbox == true end)
-		pcall(function() dashing = api:get_local_pawn(0).Dashing end) -- step 13 discovery: dash-start notify had dash=false
+		pcall(function() dashing = api:get_local_pawn(0).Dashing end)
+		-- step 13 (verified): the dash-start notify has Wing_Dash_Hitbox=false but pawn.Dashing=true. A dash that began
+		-- after our window opened owns this notify: let it through. A swing made during the dash keeps the skip.
+		if dashing == true and not hitWin.openDashing then dash = true end
 		local dt = meleeClock - hitWin.openClock
 		if not dash and hitWin.blockArmed and dt < HIT_BLOCK then
 			hitWin.blockArmed = false

@@ -15,4 +15,4 @@ Each step: backups, run_tests, sync live profile + cmp, fake-headset check, save
 10. DONE 2026-11-13 (STATE Test 32; hit window rewritten on the pawn hitbox, verified vs an inactive enemy; option still opt-in).
 11. DONE 2026-11-13 fake part (STATE Test 33; skeletal-mesh hitbox + rush-window fixes).
 12. NEXT (user): headset test of motion_hit_window (feel, whether to default it on; try a skeletal-mesh weapon and a rush).
-13. PARTLY DONE 2026-11-13 (STATE Test 34): enemy-only hit haptic verified; direct-swing slow-hand fix + pawn.Dashing notify logging coded, tests pass, synced, NOT yet run in game. Next: re-run fake check (direct swing at enemy ~95 cm with motion_hit_window on: expect "HIT window open (swing)" + damage; dash then read "dashing=" on the dash-start notify). Don't restore saves between relaunches (Steam cloud sync hangs); restore once at the end.
+13. DONE 2026-11-13 (STATE Tests 34-35): direct-swing fix verified, hit haptic verified, dash-start notify fix (pawn.Dashing). Open for headset test (step 12): swing during a dash, feel.
