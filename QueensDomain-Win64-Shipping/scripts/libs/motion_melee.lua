@@ -13,6 +13,8 @@ M.DEFAULTS = {
 	maxGap = 0.10,      -- s without fresh data: restart measuring
 	inwardGate = 0.75,  -- ignore motion this directly toward the head (wind-up, pull back)
 	upwardGate = 0.85,  -- ignore motion this directly upward (raising the weapon)
+	lateFirePeak = 2.0, -- x fireSpeed: a stroke this fast that ended without firing (frame hitch broke its run)
+	                    -- fires when it ends, if it travelled minTravel and no direction gate rejected it. 0 = off
 }
 
 local Detector = {}
@@ -32,11 +34,38 @@ function Detector:resetRun()
 	self.runTime = 0.0
 	self.runTravel = 0.0
 	self.runPeak = 0.0
+	self.runOut = 0.0 -- m of the run's travel directed away from the head (stab measure)
+	self.runDX, self.runDY, self.runDZ = 0.0, 0.0, 0.0 -- net displacement of the run (stroke direction)
+end
+
+-- Whole-stroke totals (not reset by data gaps; reset by direction gates, stroke end and fire)
+function Detector:resetStroke()
+	self.strokeTravel, self.strokeTime, self.strokeOut = 0.0, 0.0, 0.0
+	self.strokeDX, self.strokeDY, self.strokeDZ = 0.0, 0.0, 0.0
+end
+
+function Detector:commit(travel, out, ndx, ndy, ndz)
+	self.lastOutward = travel > 0.0 and out / travel or 0.0
+	local net = math.sqrt(ndx * ndx + ndy * ndy + ndz * ndz)
+	if net > 0.0 then
+		self.lastDirX, self.lastDirY, self.lastDirZ = ndx / net, ndy / net, ndz / net
+	else
+		self.lastDirX, self.lastDirY, self.lastDirZ = 0.0, 0.0, 0.0
+	end
+	self.lastStraight = travel > 0.0 and net / travel or 0.0
+	self.armed = false
+	self.sinceFire = 0.0
+	self.strokePeak = 0.0
+	self.rejectReason = nil
+	self:resetRun()
+	self:resetStroke()
 end
 
 -- Forget everything, including the cooldown. Call when the position source jumps.
 function Detector:reset()
 	self:resetRun()
+	self:resetStroke()
+	self.lastLate = false -- last fired stroke used the late-fire rule
 	self.hasLast = false
 	self.lastX, self.lastY, self.lastZ = 0.0, 0.0, 0.0
 	self.gap = 0.0
@@ -46,6 +75,10 @@ function Detector:reset()
 	self.rejectReason = nil
 	self.missPeak = 0.0  -- set when a fast stroke ended without firing; caller clears it
 	self.missReason = nil
+	self.lastOutward = 0.0 -- of the last fired stroke: share of travel away from the head (1 = straight thrust out, ~0 = sideways swing)
+	self.lastDirX, self.lastDirY, self.lastDirZ = 0.0, 0.0, 0.0 -- of the last fired stroke: unit net direction (tracking space)
+	self.lastStraight = 0.0 -- of the last fired stroke: net distance / path length (1 = straight line)
+	self.speed = 0.0 -- latest measured hand speed relative to the head (m/s); 0 after a data gap
 end
 
 -- Returns fired, peakSpeed. peakSpeed is only meaningful when fired is true.
@@ -65,7 +98,7 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 	local distSq = dx * dx + dy * dy + dz * dz
 	if distSq == 0.0 then
 		-- Pose not refreshed this tick (alternate-eye rendering): measure across ticks.
-		if self.gap > self.maxGap then self:resetRun() end
+		if self.gap > self.maxGap then self:resetRun() self.speed = 0.0 end
 		return false, 0.0
 	end
 
@@ -79,6 +112,7 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 
 	local dist = math.sqrt(distSq)
 	local speed = dist / gap
+	self.speed = speed
 
 	if speed > self.maxSpeed then
 		self:resetRun()
@@ -87,14 +121,23 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 	end
 
 	if speed < self.rearmSpeed then
-		if self.strokePeak > 0.0 then
-			self.missPeak = self.strokePeak
+		local peak = self.strokePeak
+		if peak > 0.0 and self.armed and self.rejectReason == nil and self.lateFirePeak > 0.0
+			and peak >= self.fireSpeed * self.lateFirePeak and self.strokeTravel >= self.minTravel and self.sinceFire >= self.cooldown then
+			self:commit(self.strokeTravel, self.strokeOut, self.strokeDX, self.strokeDY, self.strokeDZ)
+			self.lastLate = true
+			self.armed = true -- the stroke is already over: ready for the next one
+			return true, peak
+		end
+		if peak > 0.0 then
+			self.missPeak = peak
 			self.missReason = self.rejectReason or "short"
 		end
 		self.strokePeak = 0.0
 		self.rejectReason = nil
 		self.armed = true
 		self:resetRun()
+		self:resetStroke()
 		return false, 0.0
 	end
 
@@ -108,29 +151,115 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 	local radius = math.sqrt(x * x + y * y + z * z)
 	if radius > 0.0 and (dx * x + dy * y + dz * z) / (dist * radius) < -self.inwardGate then
 		self:resetRun()
+		self:resetStroke()
 		self.rejectReason = "inward"
 		return false, 0.0
 	end
 	if dy / dist > self.upwardGate then
 		self:resetRun()
+		self:resetStroke()
 		self.rejectReason = "upward"
 		return false, 0.0
 	end
 
+	self.strokeTime = self.strokeTime + gap
+	self.strokeTravel = self.strokeTravel + dist
+	if radius > 0.0 then self.strokeOut = self.strokeOut + (dx * x + dy * y + dz * z) / radius end
+	self.strokeDX, self.strokeDY, self.strokeDZ = self.strokeDX + dx, self.strokeDY + dy, self.strokeDZ + dz
 	self.runTime = self.runTime + gap
 	self.runTravel = self.runTravel + dist
+	if radius > 0.0 then self.runOut = self.runOut + (dx * x + dy * y + dz * z) / radius end
+	self.runDX, self.runDY, self.runDZ = self.runDX + dx, self.runDY + dy, self.runDZ + dz
 	if speed > self.runPeak then self.runPeak = speed end
 
 	if self.runTime >= self.minTime and self.runTravel >= self.minTravel and self.sinceFire >= self.cooldown then
 		local peak = self.runPeak
-		self.armed = false
-		self.sinceFire = 0.0
-		self.strokePeak = 0.0
-		self.rejectReason = nil
-		self:resetRun()
+		self:commit(self.runTravel, self.runOut, self.runDX, self.runDY, self.runDZ)
+		self.lastLate = false
 		return true, peak
 	end
 	return false, 0.0
+end
+
+-- Charge haptics: feed the game's charge multiplier (1.0 = none) each tick.
+-- update returns 0 = no pulse, 1 = step pulse (rose by `step`), 2 = cap reached (once per charge).
+local ChargeHaptics = {}
+ChargeHaptics.__index = ChargeHaptics
+function M.newChargeHaptics(step, capEps, capTicks)
+	local c = setmetatable({step = step or 0.05, capEps = capEps or 0.005, capTicks = capTicks or 10}, ChargeHaptics)
+	c:reset()
+	return c
+end
+function ChargeHaptics:reset()
+	self.lastPulse = 1.0 -- multiplier at the last pulse
+	self.peak = 1.0      -- highest multiplier this charge
+	self.stillTicks = 0  -- ticks the multiplier has not risen (cap detection)
+	self.capped = false
+end
+function ChargeHaptics:update(mult)
+	if type(mult) ~= "number" then return 0 end
+	if mult < self.peak - 0.01 then self:reset() end -- released / reset by the game
+	if mult > self.peak + 1e-6 then
+		self.peak = mult
+		self.stillTicks = 0
+		if mult - self.lastPulse >= self.step then
+			self.lastPulse = mult
+			return 1
+		end
+		return 0
+	end
+	-- not rising: cap once it was rising before and stays flat for capTicks ticks
+	if self.peak > 1.0 + self.capEps and not self.capped then
+		self.stillTicks = self.stillTicks + 1
+		if self.stillTicks >= self.capTicks then
+			self.capped = true
+			return 2
+		end
+	end
+	return 0
+end
+
+-- Rush buffer: a swing during a dash is held until `earliest` s into the dash (the game ignores
+-- attacks pressed earlier). If the dash ends first, the swing fires at dash end (normal attack).
+-- update(dt, dashing) returns true on the tick the buffered attack should fire.
+local RushBuffer = {}
+RushBuffer.__index = RushBuffer
+function M.newRushBuffer(earliest, maxHold)
+	local r = setmetatable({earliest = earliest or 0.6, maxHold = maxHold or 1.5}, RushBuffer)
+	r:reset()
+	return r
+end
+function RushBuffer:reset()
+	self.dashTime = 0.0
+	self.dashing = false
+	self.pending = false
+	self.held = 0.0
+	self.lastWasRush = false -- the last fired attack fired inside the dash
+end
+-- Call when a swing is detected. Returns true if it should fire now (no buffering needed).
+-- enabled=false (weapon has no rush attack, e.g. spear-type dashes accept attacks at once): never buffer.
+function RushBuffer:swing()
+	if not self.dashing or self.enabled == false then self.lastWasRush = false return true end
+	if self.dashTime >= self.earliest then self.lastWasRush = true return true end
+	self.pending = true
+	self.held = 0.0
+	return false
+end
+function RushBuffer:update(dt, dashing)
+	if dashing then
+		if not self.dashing then self.dashTime = 0.0 end
+		self.dashing = true
+		self.dashTime = self.dashTime + dt
+	elseif self.dashing then
+		self.dashing = false
+		if self.pending then self.pending = false self.lastWasRush = false return true end
+	end
+	if self.pending then
+		self.held = self.held + dt
+		if self.held > self.maxHold then self.pending = false return false end
+		if self.dashTime >= self.earliest then self.pending = false self.lastWasRush = true return true end
+	end
+	return false
 end
 
 return M

@@ -111,6 +111,35 @@ do -- reset allows firing again at once
 	d:update(1 / 90, 0, 0, 0, 0.4, 0, 0)
 	check("fires after reset", run(d, 0.3, 0, 0, -4.0) == 1)
 end
+do -- a forward thrust from low by the body reads as outward (stab); a sideways swing does not
+	local d = mm.new()
+	d:update(1 / 90, 0, 0, 0, 0.15, -0.25, 0)
+	check("thrust fires", run(d, 0.2, 3.0, 0, 0, 90, 0.15, -0.25, 0) == 1)
+	check("thrust outward " .. string.format("%.2f", d.lastOutward), d.lastOutward > 0.5)
+	local d2 = fresh()
+	run(d2, 0.3, 0, 0, -4.0)
+	check("sideways swing not outward " .. string.format("%.2f", d2.lastOutward), d2.lastOutward < 0.4)
+	local d3 = mm.new()
+	d3:update(1 / 90, 0, 0, 0, 0.3, 0.3, 0)
+	check("chop not outward", run(d3, 0.2, 0, -4.0, 0, 90, 0.3, 0.3) == 1 and d3.lastOutward < 0.4)
+end
+do -- net stroke direction + straightness (stab axis check uses them)
+	local d = mm.new()
+	d:update(1 / 90, 0, 0, 0, 0.15, -0.25, 0)
+	run(d, 0.2, 3.0, 0, 0, 90, 0.15, -0.25, 0)
+	check("thrust dir along +x " .. string.format("%.2f", d.lastDirX), d.lastDirX > 0.99)
+	check("thrust straight " .. string.format("%.2f", d.lastStraight), d.lastStraight > 0.99)
+	local d2 = fresh()
+	run(d2, 0.3, 0, 0, -4.0)
+	check("sideways dir along -z", d2.lastDirZ < -0.99 and math.abs(d2.lastDirX) < 0.01)
+end
+do -- live speed (hit window closes when it drops), cleared by a data gap
+	local d = fresh()
+	run(d, 0.1, 0, 0, -4.0)
+	check("speed tracks hand " .. string.format("%.2f", d.speed), math.abs(d.speed - 4.0) < 0.05)
+	for _ = 1, 20 do d:update(1 / 90, 0, 0, 0, 0.4, 0, 0.5) end
+	check("speed 0 after gap", d.speed == 0.0)
+end
 do -- no allocation in the hot path
 	local d = fresh()
 	collectgarbage("collect")
@@ -124,6 +153,97 @@ do -- no allocation in the hot path
 	local grew = collectgarbage("count") - before
 	collectgarbage("restart")
 	check("no allocation (grew " .. grew .. " KB)", grew < 1.0)
+end
+
+-- test 20: late fire. A frame hitch (gap > maxGap) restarts the run, so a fast stroke can end "short";
+-- if its peak is >= lateFirePeak x fireSpeed and the whole stroke travelled minTravel, it fires when it ends.
+local function hitchStroke(d, speed, startX, dirX, dirZ)
+	local x, z, fires, peak = startX, 0.0, 0, 0.0
+	local function step(dt, dist)
+		x, z = x + dirX * dist, z + dirZ * dist
+		local f, p = d:update(dt, 0, 0, 0, x, 0, z)
+		if f then fires = fires + 1 peak = p end
+	end
+	step(1 / 90, speed / 90) step(1 / 90, speed / 90) -- 2 fast frames (run too short to commit)
+	step(0.15, speed * 0.15)                         -- hitch: one 150 ms frame (run restarts)
+	step(1 / 90, speed / 90) step(1 / 90, speed / 90) -- 2 more fast frames
+	for _ = 1, 5 do step(1 / 90, 0.0005) end         -- stop
+	return fires, peak
+end
+do
+	local d = fresh()
+	local f, p = hitchStroke(d, 5.0, 0.4, 0.0, -1.0)
+	check("late fire: fast stroke broken by a hitch fires once", f == 1 and d.lastLate == true and math.abs(p - 5.0) < 0.01)
+	check("late fire: stroke direction kept", d.lastDirZ < -0.99)
+end
+do
+	local d = fresh()
+	local f = hitchStroke(d, 3.0, 0.4, 0.0, -1.0)
+	check("late fire: below 2x fireSpeed stays a miss", f == 0 and d.missReason == "short")
+end
+do
+	local d = fresh()
+	local f = hitchStroke(d, 6.0, 0.6, -1.0, 0.0) -- straight toward the head: wind-up gate
+	check("late fire: never for gated (inward) strokes", f == 0)
+end
+do
+	local d = fresh({lateFirePeak = 0})
+	local f = hitchStroke(d, 5.0, 0.4, 0.0, -1.0)
+	check("late fire: lateFirePeak 0 disables it", f == 0)
+end
+do -- a normal swing still commits early (not late)
+	local d = fresh()
+	local f = run(d, 0.3, 0, 0, -4.0)
+	check("normal swing is not a late fire", f == 1 and d.lastLate == false)
+end
+
+do -- charge haptics: delay at 1.0, linear rise, cap at 1.333 (D2 curve)
+	local c = mm.newChargeHaptics(0.05)
+	local steps, caps, capAt = 0, 0, nil
+	local dt = 1 / 90
+	for i = 1, math.floor(4.5 / dt) do
+		local t = i * dt
+		local m = t < 0.4 and 1.0 or math.min(1.333, 1.0 + (t - 0.4) * 0.11)
+		local r = c:update(m)
+		if r == 1 then steps = steps + 1 elseif r == 2 then caps = caps + 1; capAt = capAt or t end
+	end
+	check("charge: step pulses while rising", steps == 6)
+	check("charge: one cap pulse", caps == 1 and capAt and capAt > 3.4 and capAt < 3.6)
+	check("charge: no pulse at 1.0 hold", mm.newChargeHaptics():update(1.0) == 0)
+	c:update(1.0) -- release resets
+	check("charge: reset on release", c.peak == 1.0 and not c.capped)
+	check("charge: nil multiplier ignored", c:update(nil) == 0)
+end
+do -- rush buffer
+	local dt = 1 / 90
+	local function dash(r, len, swingAt)
+		local firedAt
+		for i = 1, math.floor(1.5 / dt) do
+			local t = i * dt
+			if math.abs(t - swingAt) < dt / 2 and r:swing() then firedAt = t end
+			if r:update(dt, t <= len) then firedAt = firedAt or t end
+		end
+		return firedAt
+	end
+	check("rush: no dash fires at once", mm.newRushBuffer(0.6):swing() == true)
+	local r = mm.newRushBuffer(0.6)
+	local t = dash(r, 0.85, 0.2)
+	check("rush: early swing buffered to earliest", t and t >= 0.6 and t < 0.62 and r.lastWasRush)
+	r = mm.newRushBuffer(0.6)
+	t = dash(r, 0.85, 0.7)
+	check("rush: late swing fires immediately", t and math.abs(t - 0.7) < dt and r.lastWasRush)
+	r = mm.newRushBuffer(0.6)
+	t = dash(r, 0.4, 0.2)
+	check("rush: short dash fires at dash end", t and t > 0.4 and t < 0.42 and not r.lastWasRush)
+	r = mm.newRushBuffer(0.6, 0.1)
+	t = dash(r, 0.85, 0.2)
+	check("rush: maxHold drops a stale swing", t == nil)
+	r = mm.newRushBuffer(0.6) r.enabled = false
+	t = dash(r, 0.33, 0.1)
+	check("rush: disabled (spear-type) fires at once in the dash", t and math.abs(t - 0.1) < dt and not r.lastWasRush)
+	r = mm.newRushBuffer(0.6) r.enabled = false
+	t = dash(r, 0.85, 0.2)
+	check("rush: disabled never buffers", t and math.abs(t - 0.2) < dt and not r.pending)
 end
 
 print(string.format("%d passed, %d failed", passed, failed))
