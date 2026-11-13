@@ -1106,28 +1106,40 @@ end
 local HIT_MIN, HIT_MAX, HIT_BLOCK = 0.2, 0.8, 1.5
 local hitWin = {open = false, t = 0.0, openClock = -100.0, hits = 0, blocked = 0, blockArmed = false}
 local function hitWinOn() return configui.getValue("motion_hit_window") == true and configui.getValue("6dof_right") == true end
+-- step 13: EnemiesHitThisSwipe also lists walls/props; haptic only for FS_EnemyCharacterBase actors (hitWin.foes).
 local function hitWinPollHits()
-	local n = 0
-	pcall(function() local a = api:get_local_pawn(0).EnemiesHitThisSwipe; if a ~= nil then n = #a end end)
+	local n, a = 0, nil
+	pcall(function() a = api:get_local_pawn(0).EnemiesHitThisSwipe; if a ~= nil then n = #a end end)
 	if n > hitWin.hits then
+		local newFoes = 0
+		pcall(function()
+			if hitWin.foeClass == nil then hitWin.foeClass = uevrUtils.get_class("Class /Script/QueensDomain.FS_EnemyCharacterBase") end
+			for i = hitWin.hits + 1, n do
+				local act = a[i]
+				if act ~= nil and (hitWin.foeClass == nil or act:is_a(hitWin.foeClass)) then newFoes = newFoes + 1 end
+			end
+		end)
 		hitWin.hits = n
-		if configui.getValue("hit_haptics") ~= false then
+		hitWin.foes = (hitWin.foes or 0) + newFoes
+		if newFoes > 0 and configui.getValue("hit_haptics") ~= false then
 			pcall(function() uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.09, 180, 0.9) end)
 		end
-		meleeLog(string.format("HIT landed t=%.2f enemies=%d", hitWin.t, n))
+		meleeLog(string.format("HIT landed t=%.2f actors=%d enemies=%d", hitWin.t, n, hitWin.foes))
 	end
 end
 local function hitWinClose(why)
 	if not hitWin.open then return end
 	hitWin.open = false
 	local ok, err = pcall(function() api:get_local_pawn(0):DeactivateHitbox() end)
-	meleeLog(string.format("HIT window close (%s) dur=%.2f hits=%d blocked=%d%s", why, hitWin.t, hitWin.hits, hitWin.blocked, ok and "" or (" err=" .. tostring(err))))
+	meleeLog(string.format("HIT window close (%s) dur=%.2f hits=%d enemies=%d blocked=%d%s", why, hitWin.t, hitWin.hits, hitWin.foes or 0, hitWin.blocked, ok and "" or (" err=" .. tostring(err))))
 end
 local function hitWinOpen(weapon, why, primary)
 	if weapon == nil or not hitWinOn() then return end
 	-- step 11: a buffered rush/post-dash swing fires after the hand stopped; ours would close at HIT_MIN and skip the
 	-- game's (rush) window, so the attack could never land. Hand not moving -> leave the game's window alone.
-	if (swingDetector.speed or 0) < swingDetector.rearmSpeed then
+	-- step 13: only for buffered swings; a direct swing detected at its end (hand already slowing) still opens ours.
+	local buffered = why == "swing" and (hitWin.src == "rush" or hitWin.src == "post-dash")
+	if buffered and (swingDetector.speed or 0) < swingDetector.rearmSpeed then
 		meleeLog(string.format("HIT window not opened (%s): hand slow %.2f -> game window", why, swingDetector.speed or 0))
 		return
 	end
@@ -1135,7 +1147,7 @@ local function hitWinOpen(weapon, why, primary)
 	pcall(attachHitboxesToWeaponTip)
 	local ok, err = pcall(function() api:get_local_pawn(0):ActivateHitbox(primary ~= false, false) end)
 	if not ok then meleeLog("HIT activate error " .. tostring(err)) return end
-	hitWin.open, hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked = true, weapon, 0.0, meleeClock, 0, 0
+	hitWin.open, hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked, hitWin.foes = true, weapon, 0.0, meleeClock, 0, 0, 0
 	hitWinPollHits() -- ActivateHitbox traces at once
 	hitWin.blockArmed = true -- skip only the next game notify window (this attack's), not a later trigger attack
 	meleeLog("HIT window open (" .. why .. ")")
@@ -1153,16 +1165,17 @@ function hookHitWindow()
 	local ncls = "BlueprintGeneratedClass /Game/Player/PlayerHitboxState.PlayerHitboxState_C"
 	local okB = hook_function(ncls, "Received_NotifyBegin", false, function(fn, obj, locals, result)
 		if not hitWinOn() then return end
-		local dash = false
+		local dash, dashing = false, nil
 		pcall(function() dash = obj.Wing_Dash_Hitbox == true end)
+		pcall(function() dashing = api:get_local_pawn(0).Dashing end) -- step 13 discovery: dash-start notify had dash=false
 		local dt = meleeClock - hitWin.openClock
 		if not dash and hitWin.blockArmed and dt < HIT_BLOCK then
 			hitWin.blockArmed = false
 			hitWin.blocked = hitWin.blocked + 1
-			meleeLog(string.format("HIT game window skipped dt=%.2f", dt))
+			meleeLog(string.format("HIT game window skipped dt=%.2f dashing=%s", dt, tostring(dashing)))
 			return false
 		end
-		meleeLog(string.format("HIT game window dt=%.2f dash=%s", dt, tostring(dash)))
+		meleeLog(string.format("HIT game window dt=%.2f dash=%s dashing=%s", dt, tostring(dash), tostring(dashing)))
 	end, nil, false)
 	local okE = hook_function(ncls, "Received_NotifyEnd", false, function(fn, obj, locals, result)
 		if hitWin.open and hitWinOn() then
@@ -1197,6 +1210,7 @@ local function meleeFire(speed, source)
 	dbgLogPositions("swing")
 	meleePressedWeapon = activeWeapon
 	meleeReleaseIn = MELEE_RELEASE_DELAY
+	hitWin.src = source
 	meleeSwingCount = meleeSwingCount + 1
 	activeWeapon:AttackPressed()
 	meleeLog(string.format("swing #%d %s speed=%.2f threshold=%.2f out=%.2f%s %s", meleeSwingCount, source, speed, swingDetector.fireSpeed, swingDetector.lastOutward or 0.0, swingDetector.lastLate and " LATE" or "", meleeHitboxState()))
