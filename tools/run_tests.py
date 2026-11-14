@@ -19,11 +19,11 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(f'package.path = "{lua_path(SCRIPTS)}/libs/?.lua;" .. package.path')
 
 failed = lua.execute(f'return dofile("{lua_path(HERE)}/test_motion_melee.lua")')
-for test in ("test_qd_grip.lua", "test_qd_pickup.lua", "test_qd_belt.lua", "test_qd_ik.lua"):
+for test in ("test_qd_grip.lua", "test_qd_pickup.lua", "test_qd_belt.lua", "test_qd_ik.lua", "test_qd_shoulder.lua"):
     if os.path.exists(os.path.join(HERE, test)):
         failed += lua.execute(f'return dofile("{lua_path(HERE)}/{test}")')
 
-for script in ("queens_domain_vr.lua", "libs/motion_melee.lua", "libs/qd_grip.lua", "libs/qd_pickup.lua", "libs/qd_belt.lua", "libs/qd_ik.lua"):
+for script in ("queens_domain_vr.lua", "libs/motion_melee.lua", "libs/qd_grip.lua", "libs/qd_pickup.lua", "libs/qd_belt.lua", "libs/qd_ik.lua", "libs/qd_shoulder.lua"):
     path = lua_path(os.path.join(SCRIPTS, script))
     ok, err = lua.execute(f'local f, e = loadfile("{path}"); return f ~= nil, e')
     status = "syntax ok" if ok else f"SYNTAX ERROR: {err}"

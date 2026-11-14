@@ -208,6 +208,7 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "pickup_assist", label = "Easy pickups: point left hand or crosshair at an item (beam shows it), grip or X grabs", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_take", label = "Grabbed item goes straight to the inventory (off = press A to take it)", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_hold", label = "Items without a hand-tuned grip are held upright in the fist, shrunk to hand size", initialValue = true },
+			{ widgetType = "checkbox", id = "shoulder_switch", label = "Right grip at your right shoulder switches weapon (like D-pad right)", initialValue = true },
 			{ widgetType = "checkbox", id = "belt", label = "Consumable belt: owned items hang at your waist (look down); grip one, bring it to your mouth to use it", initialValue = true },
 			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 5, range = {1, 5} },
 			{ widgetType = "slider_float", id = "belt_drop", label = "Belt height: cm below your eyes", initialValue = 60.0, range = {30.0, 95.0} },
@@ -318,7 +319,9 @@ local configDefinition = {
 				label = "Hold RT to charge, swing to release",
 				initialValue = true
 			},
+			{ widgetType = "checkbox", id = "still_release_cancel", label = "Releasing RT without a swing cancels the charge (no attack)", initialValue = true },
 			{ widgetType = "checkbox", id = "charge_haptics", label = "Weapon hand pulses while charging (strong at full)", initialValue = true },
+			{ widgetType = "checkbox", id = "charge_glow", label = "Weapon glows while charging (pulses at full)", initialValue = true },
 			{ widgetType = "checkbox", id = "rush_buffer", label = "Swing during a dash waits for the rush attack window", initialValue = true },
 			{ widgetType = "slider_float", id = "rush_earliest", label = "Rush window opens (s into the dash, sword-type weapons only)", initialValue = 0.6, range = {0.2, 1.0} },
 			{
@@ -870,6 +873,17 @@ function attachHitboxesToWeaponTip()
 				pawn.DefaultHitbox:K2_SetRelativeLocation(activeLeftWeaponMeshCenter, false, reusable_hit_result, true)
 				pcall(function() pawn.DefaultHitbox:K2_SetRelativeRotation(hbZeroRot, false, reusable_hit_result, true) end)
 			end
+			-- step 18: the game's hitbox BoxComponents now sit under the weapon mesh, so propagated weapon visibility
+			-- (attachments SetHiddenInGame(false, true)) renders them as the engine's red shape wireframe. Render-only flag.
+			pcall(function()
+				local hide = configui.getValue("debug_hitboxes") ~= true
+				local hb = pawn.NormalHitbox
+				if hb ~= nil and hb.bHiddenInGame ~= hide then hb.bHiddenInGame = hide end
+				hb = pawn.DefaultHitbox
+				if hb ~= nil and hb.bHiddenInGame ~= hide then hb.bHiddenInGame = hide end
+				hb = pawn.ParryHitbox
+				if hb ~= nil and hb.bHiddenInGame ~= hide then hb.bHiddenInGame = hide end
+			end)
 			--[[if pawn.ParryHitbox ~=nil and pawn.ParryHitbox.AttachParent ~= activeWeaponMesh then
 				--pawn.ParryHitbox:DetachFromParent()			
 				pawn.ParryHitbox:K2_AttachToComponent(activeWeaponMesh,
@@ -1116,7 +1130,10 @@ local function hitWinPollHits()
 			if hitWin.foeClass == nil then hitWin.foeClass = uevrUtils.get_class("Class /Script/QueensDomain.FS_EnemyCharacterBase") end
 			for i = hitWin.hits + 1, n do
 				local act = a[i]
-				if act ~= nil and (hitWin.foeClass == nil or act:is_a(hitWin.foeClass)) then newFoes = newFoes + 1 end
+				if act ~= nil and (hitWin.foeClass == nil or act:is_a(hitWin.foeClass)) then newFoes = newFoes + 1
+				elseif act ~= nil then -- step 15: what non-enemy actors does the hitbox report (props, walls)?
+					pcall(function() meleeLog("HIT non-enemy class=" .. act:get_class():get_fname():to_string()) end)
+				end
 			end
 		end)
 		hitWin.hits = n
@@ -1127,8 +1144,36 @@ local function hitWinPollHits()
 		meleeLog(string.format("HIT landed t=%.2f actors=%d enemies=%d", hitWin.t, n, hitWin.foes))
 	end
 end
+-- step 15 discovery (miss analysis): on a window with no enemy hit, log the hitbox position/extent and the nearest
+-- enemy (find_all_of may match the exact class only: count logged). Runs once per empty window, never per tick.
+T20.S15 = {}
+function T20.S15.missProbe(pawn)
+	local box = pawn.CurrentActiveHitbox
+	if box == nil then meleeLog("MISS probe: no active hitbox") return end
+	local p = box:K2_GetComponentLocation()
+	local ext = box:GetScaledBoxExtent()
+	local foes = uevrUtils.find_all_of("Class /Script/QueensDomain.FS_EnemyCharacterBase", false) or {}
+	local best, bestName, n = nil, "", 0
+	for _, e in ipairs(foes) do
+		local okE, d = pcall(function()
+			local q = e:K2_GetActorLocation()
+			local dx, dy, dz = q.X - p.X, q.Y - p.Y, q.Z - p.Z
+			return math.sqrt(dx * dx + dy * dy + dz * dz)
+		end)
+		if okE and d ~= nil then
+			n = n + 1
+			if best == nil or d < best then best = d; pcall(function() bestName = e:get_class():get_fname():to_string() end) end
+		end
+	end
+	meleeLog(string.format("MISS probe: box ext=(%.0f,%.0f,%.0f) enemies=%d nearest=%s cm %s", ext.X, ext.Y, ext.Z, n,
+		best and string.format("%.0f", best) or "none", bestName))
+end
 local function hitWinClose(why)
 	if not hitWin.open then return end
+	if (hitWin.foes or 0) == 0 then
+		local okP, errP = pcall(function() T20.S15.missProbe(api:get_local_pawn(0)) end)
+		if not okP then meleeLog("MISS probe error " .. tostring(errP)) end
+	end
 	hitWin.open = false
 	local ok, err = pcall(function() api:get_local_pawn(0):DeactivateHitbox() end)
 	meleeLog(string.format("HIT window close (%s) dur=%.2f hits=%d enemies=%d blocked=%d%s", why, hitWin.t, hitWin.hits, hitWin.foes or 0, hitWin.blocked, ok and "" or (" err=" .. tostring(err))))
@@ -1229,6 +1274,13 @@ local function meleeFire(speed, source)
 	hitWin.src = source
 	meleeSwingCount = meleeSwingCount + 1
 	activeWeapon:AttackPressed()
+	-- step 15: open the hit window at detection, not 0.05 s later at release (fake trace: the blade passed the target
+	-- in that gap). T20.S15.openAtPress = false restores the old timing.
+	hitWin.pressOpen = false
+	if T20.S15.openAtPress ~= false then
+		hitWinOpen(activeWeapon, "swing")
+		hitWin.pressOpen = hitWin.open
+	end
 	meleeLog(string.format("swing #%d %s speed=%.2f threshold=%.2f out=%.2f%s %s", meleeSwingCount, source, speed, swingDetector.fireSpeed, swingDetector.lastOutward or 0.0, swingDetector.lastLate and " LATE" or "", meleeHitboxState()))
 end
 
@@ -1296,9 +1348,96 @@ local function meleeRelease(delta)
 		if weapon ~= nil then
 			weapon:AttackReleased()
 			meleeLog("AttackReleased")
-			hitWinOpen(weapon, "swing")
+			if hitWin.open and hitWin.pressOpen then
+				hitWin.pressOpen = false
+				meleeLog(string.format("HIT window kept from press (%.2f s, hits=%d)", hitWin.t, hitWin.hits))
+			else
+				hitWinOpen(weapon, "swing")
+			end
 		end
 	end
+end
+
+-- step 16: RT released with no swing (still hand) -> no attack: cancel the charge instead of AttackReleased.
+-- Names from the SDK: WeaponScriptBase_C.CancelAllAttacks, FS_PlayerChar_C.CancelCurrentAttacks / NormalAttackCharging /
+-- AttackPressed / CurrentAttackCharge_ / EnergyChargeLogic.CurrentPowerCharge. Discovery: effects are logged, not yet seen.
+-- T20.S16.mode: "weapon" (default) = weapon:CancelAllAttacks(), "pawn" = pawn:CancelCurrentAttacks(), "fields" = only
+-- clear the pawn flags. Any mode clears the pawn flags afterwards if the pawn still reports charging.
+T20.S16 = { mode = "weapon", checkIn = 0.0 }
+function T20.S16.state(pawn)
+	local ok, s = pcall(function()
+		local e = pawn.EnergyChargeLogic
+		local en = "?"
+		if e ~= nil then en = string.format("%.2f", e.CurrentPowerCharge or -1) end
+		return string.format("charging=%s pressed=%s charge=%.2f energy=%s", tostring(pawn.NormalAttackCharging),
+			tostring(pawn.AttackPressed), pawn.CurrentAttackCharge_ or -1, en)
+	end)
+	return ok and s or ("state err " .. tostring(s))
+end
+function T20.S16.cancel(weapon)
+	if weapon == nil or T20.agIsRanged(weapon) then return false end
+	local pawn = api:get_local_pawn(0)
+	if pawn == nil then return false end
+	local before = T20.S16.state(pawn)
+	local m = T20.S16.mode
+	if m == "weapon" then weapon:CancelAllAttacks() elseif m == "pawn" then pawn:CancelCurrentAttacks() end
+	local mid = T20.S16.state(pawn)
+	local cleared = false
+	if pawn.NormalAttackCharging == true or pawn.AttackPressed == true then
+		pawn.NormalAttackCharging = false
+		pawn.AttackPressed = false
+		cleared = true
+	end
+	-- step 17 test 41: the cancel left pawn.AttackBlocked=true and the charge montage looping -> weapon swap (and attacks)
+	-- blocked until the next real attack. Clearing AttackBlocked frees them (verified live); stop the charge montage too.
+	local extra = ""
+	pcall(function()
+		if pawn.AttackBlocked == true then pawn.AttackBlocked = false extra = extra .. " AttackBlocked cleared" end
+		local ai = pawn.Arms:GetAnimInstance()
+		local mont = ai ~= nil and ai:GetCurrentActiveMontage() or nil
+		if mont ~= nil and string.find(mont:get_fname():to_string(), "Charge", 1, true) ~= nil then
+			ai:Montage_Stop(0.15, mont)
+			extra = extra .. " chargeMontage stopped"
+		end
+	end)
+	if extra ~= "" then cleared = true end
+	meleeLog(string.format("S16 still release: cancel(%s) before: %s | after: %s%s", m, before, mid,
+		cleared and (" | flags cleared:" .. extra .. " " .. T20.S16.state(pawn)) or ""))
+	T20.S16.checkIn = 0.3
+	return true
+end
+function T20.S16.tick(delta)
+	if T20.S16.checkIn <= 0.0 then return end
+	T20.S16.checkIn = T20.S16.checkIn - delta
+	if T20.S16.checkIn <= 0.0 then
+		local pawn = api:get_local_pawn(0)
+		if pawn ~= nil then meleeLog("S16 +0.3 s: " .. T20.S16.state(pawn)) end
+	end
+end
+
+-- step 17: charge glow on the weapon. The game's weapon MID (Equipment_Evo parent) has a scalar "LevelFlash" (level-up
+-- flash; 1 = faint, 4 = bright streaks, verified on the spear 2026-11-14). We write it only on change and put it back to 0.
+T20.S17 = {mat = nil, val = 0.0, t = 0.0, MAX = 3.0}
+function T20.S17.set(mat, v)
+	mat:SetScalarParameterValue("LevelFlash", v)
+end
+function T20.S17.update(on, dt)
+	local g = T20.S17
+	local mat = nil
+	if on and activeWeaponMesh ~= nil then
+		mat = activeWeaponMesh:GetMaterial(0)
+		if mat ~= nil and not string.find(mat:get_class():get_fname():to_string(), "Dynamic", 1, true) then mat = nil end
+	end
+	if g.mat ~= nil and g.mat ~= mat then -- charge ended or the weapon changed: restore the old material
+		if g.val ~= 0.0 and uevrUtils.getValid(g.mat) ~= nil then g.set(g.mat, 0.0) end
+		g.mat, g.val = nil, 0.0
+	end
+	if mat == nil then g.t = 0.0 return end
+	g.mat = mat
+	g.t = g.t + (dt or 0.016)
+	local h = T20.S6.haptics
+	local v = motionMelee.chargeGlow(h.peak, h.capped, g.MAX, g.t)
+	if math.abs(v - g.val) >= 0.05 or (v == 0.0 and g.val ~= 0.0) then g.set(mat, v) g.val = v end
 end
 
 -- step 6 (I2): charge haptics while RT charges; rush buffer releases a swing held during a dash
@@ -1306,8 +1445,12 @@ function T20.S6.tick(delta)
 	local pawn = api:get_local_pawn(0)
 	if pawn == nil then return end
 	if T20.S6.keysMsg ~= nil then meleeLog(T20.S6.keysMsg) T20.S6.keysMsg = nil end
-	if rightTriggerHeld and not rtSwingReleased and configui.getValue("charge_haptics") ~= false then
+	local okS16, errS16 = pcall(T20.S16.tick, delta)
+	if not okS16 then meleeLog("S16 tick error " .. tostring(errS16)) T20.S16.checkIn = 0.0 end
+	local hapOn, glowOn = configui.getValue("charge_haptics") ~= false, configui.getValue("charge_glow") ~= false
+	if rightTriggerHeld and not rtSwingReleased and (hapOn or glowOn) then
 		local r = T20.S6.haptics:update(T20.S6.mult(pawn))
+		if not hapOn then r = 0 end
 		if r == 1 then uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.03, 160, 0.25)
 		elseif r == 2 then
 			uevrUtils.triggerHapticVibration(Handed.Right, 0, 0.15, 120, 1.0)
@@ -1316,6 +1459,8 @@ function T20.S6.tick(delta)
 	elseif T20.S6.haptics.peak ~= 1.0 then
 		T20.S6.haptics:reset()
 	end
+	local okG, errG = pcall(T20.S17.update, glowOn and rightTriggerHeld and not rtSwingReleased, delta)
+	if not okG and not T20.S17.errLogged then T20.S17.errLogged = true meleeLog("S17 glow error " .. tostring(errG)) end
 	T20.S6.rush.earliest = configui.getValue("rush_earliest") or 0.6
 	-- step 9: only sword-type weapons (DashHitboxBonusRange) have a rush window; spear-type dashes accept attacks at once
 	if T20.S6.rushFor ~= activeWeapon then
@@ -2529,7 +2674,8 @@ function applyNormalModeSettings(delta)
 			currentCompassWidgetComponent:SetVisibility(false, true)
 		end
 	else
-		vr.set_mod_value("VR_AimMethod", "2")
+		-- step 20: frame_layout aims with the left hand before any throwable is owned too (same as with the knives)
+		vr.set_mod_value("VR_AimMethod", configui.getValue("frame_layout") ~= false and "3" or "2")
 		if currentCompass ~= nil then
 			currentCompassWidgetComponent:SetVisibility(true, true)
 		end
@@ -2679,6 +2825,9 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	if T20.belt ~= nil then
 		local okB, errB = pcall(regularPlayLast and T20.belt.tick or T20.belt.hideAll, delta)
 		if not okB and not T20.beltErr then T20.beltErr = true uevr.params.functions.log_info("[BELT] error: " .. tostring(errB)) end
+	end
+	if T20.shoulder ~= nil then
+		if regularPlayLast then pcall(T20.shoulder.tick, delta) else T20.shoulder.reset() end
 	end
 	-- step 3: IK arms: only with the option and motion controls on; hidden outside regular play
 	if T20.ik ~= nil then
@@ -2929,6 +3078,12 @@ pcall(function()
 		log = function(m) uevr.params.functions.log_info(m) end})
 	QD.belt = T20.belt
 end)
+-- step 22: right grip at the right shoulder = D-pad right (weapon switch). Same early xinput callback as the belt.
+pcall(function()
+	T20.shoulder = require("libs/qd_shoulder")
+	T20.shoulder.init({uevrUtils = uevrUtils, controllers = controllers, configui = configui, log = function(m) uevr.params.functions.log_info(m) end})
+	QD.shoulder = T20.shoulder
+end)
 -- step 3: IK arms. require only works while the script loads, so the IK lib (and its side modules) is loaded only when the
 -- option is already on: off = nothing new runs and pawn.Arms stays hidden as before.
 if configui.getValue("ik_arms") == true then
@@ -2942,6 +3097,7 @@ if configui.getValue("ik_arms") == true then
 end
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 	if inputIndex ~= nil and user_index ~= inputIndex then return end -- skip the 2nd, all-zero call (see main callback)
+	if T20.shoulder ~= nil then pcall(T20.shoulder.onXInput, state) end
 	if T20.belt ~= nil then pcall(T20.belt.onXInput, state) end
 end)
 
@@ -2971,10 +3127,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 		if normalPlay == true then
 			local okA, extra = pcall(pollActions)
 			if okA and extra ~= 0 then state.Gamepad.wButtons = state.Gamepad.wButtons | extra end
-			-- test 12: fallback for Select (left View, see ACT_MAP) -> R3 = Back/inventory (frame_layout: R3 is otherwise unused). L3+R3 is the UEVR menu: leave it alone.
-			if configui.getValue("frame_layout") ~= false and state.Gamepad.wButtons & 0x00C0 == 0x0080 then
-				state.Gamepad.wButtons = (state.Gamepad.wButtons & ~0x0080) | 0x0020
-			end
+			-- step 23: R3 -> Back/inventory fallback removed (Select/View opens the inventory; user 2026-11-14).
 			if state.Gamepad.wButtons & 0x0020 ~= 0 then
 				if not backHeld then backHeld = true; pcall(openInventory, "Back") end
 				state.Gamepad.wButtons = state.Gamepad.wButtons & ~0x0020
@@ -2997,7 +3150,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 							activeWeapon:AttackPressed()
 							rtPressedAt = meleeClock
 							rtSwingReleased = false
-							pcall(meleeLog, "RT AttackPressed")
+							pcall(function() meleeLog("RT AttackPressed " .. T20.S16.state(api:get_local_pawn(0))) end)
 						end
 						rightTriggerHeld = true
 						rtLowSince = nil
@@ -3011,10 +3164,21 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 						if rtSwingReleased then
 							pcall(meleeLog, string.format("RT up held=%.2fs (already released by swing)", meleeClock - rtPressedAt))
 						else
-							attachHitboxesToWeaponTip()
-							local ci = chargeInfo()
-							activeWeapon:AttackReleased()
-							pcall(meleeLog, string.format("RT AttackReleased held=%.2fs %s", meleeClock - rtPressedAt, ci))
+							-- step 16: with motion melee + charge-on-swing, a release with no swing cancels (no attack)
+							local cancelled = false
+							if configui.getValue("still_release_cancel") ~= false and configui.getValue("charge_on_swing") ~= false
+								and configui.getValue("6dof_right") == true then
+								local okC, resC = pcall(T20.S16.cancel, activeWeapon)
+								if okC then cancelled = resC else pcall(meleeLog, "S16 cancel error " .. tostring(resC)) end
+							end
+							if cancelled then
+								pcall(meleeLog, string.format("RT up held=%.2fs: still release cancelled", meleeClock - rtPressedAt))
+							else
+								attachHitboxesToWeaponTip()
+								local ci = chargeInfo()
+								activeWeapon:AttackReleased()
+								pcall(function() meleeLog(string.format("RT AttackReleased held=%.2fs %s %s", meleeClock - rtPressedAt, ci, T20.S16.state(api:get_local_pawn(0)))) end)
+							end
 						end
 						rtSwingReleased = false
 						rightTriggerHeld = false

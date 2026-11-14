@@ -57,6 +57,7 @@ function Detector:commit(travel, out, ndx, ndy, ndz)
 	self.sinceFire = 0.0
 	self.strokePeak = 0.0
 	self.rejectReason = nil
+	self.cooldownBlocked = false
 	self:resetRun()
 	self:resetStroke()
 end
@@ -75,6 +76,7 @@ function Detector:reset()
 	self.rejectReason = nil
 	self.missPeak = 0.0  -- set when a fast stroke ended without firing; caller clears it
 	self.missReason = nil
+	self.cooldownBlocked = false -- current stroke would have fired but for the cooldown
 	self.lastOutward = 0.0 -- of the last fired stroke: share of travel away from the head (1 = straight thrust out, ~0 = sideways swing)
 	self.lastDirX, self.lastDirY, self.lastDirZ = 0.0, 0.0, 0.0 -- of the last fired stroke: unit net direction (tracking space)
 	self.lastStraight = 0.0 -- of the last fired stroke: net distance / path length (1 = straight line)
@@ -131,10 +133,11 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 		end
 		if peak > 0.0 then
 			self.missPeak = peak
-			self.missReason = self.rejectReason or "short"
+			self.missReason = self.rejectReason or (self.cooldownBlocked and "cooldown") or "short"
 		end
 		self.strokePeak = 0.0
 		self.rejectReason = nil
+		self.cooldownBlocked = false
 		self.armed = true
 		self:resetRun()
 		self:resetStroke()
@@ -178,6 +181,8 @@ function Detector:update(dt, headX, headY, headZ, handX, handY, handZ)
 		self.lastLate = false
 		return true, peak
 	end
+	-- step 15: a stroke that met time + travel but not the cooldown reports "cooldown", not "short", when it ends
+	if self.runTime >= self.minTime and self.runTravel >= self.minTravel then self.cooldownBlocked = true end
 	return false, 0.0
 end
 
@@ -271,6 +276,17 @@ function M.hitNotifyBegin(o)
 	if o.dashing == true and not o.openDashing and o.openWhy ~= "L2 stab" then dash = true end
 	local skip = (not dash) and o.blockArmed == true and (o.dt or 0) < (o.block or 1.5)
 	return skip, dash
+end
+
+-- step 17: weapon glow for a charge. peak = charge multiplier (1.0 = none), capped = full charge reached.
+-- Ramps to `ramp` of maxGlow over `span` multiplier; full charge = maxGlow with a slow pulse (t seconds).
+function M.chargeGlow(peak, capped, maxGlow, t, span, ramp)
+	span, ramp = span or 0.34, ramp or 0.6
+	if capped then return maxGlow * (0.8 + 0.2 * math.sin((t or 0) * 8.0)) end
+	local f = ((peak or 1.0) - 1.0) / span
+	if f <= 0 then return 0.0 end
+	if f > 1 then f = 1 end
+	return maxGlow * ramp * f
 end
 
 return M

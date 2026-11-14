@@ -70,6 +70,17 @@ do -- cooldown blocks a fast re-swing, then lets it through
 	run(d, 0.8, 0, 0, 0.5, 90, 0.4, 0, z)
 	check("cooldown expires", run(d, 0.3, 0, 0, 4.0, 90, 0.4, 0, z) == 1)
 end
+do -- step 15: a fast stroke cut off by the cooldown ends as a "cooldown" miss (flurry diagnosis)
+	local d = fresh({cooldown = 1.0})
+	run(d, 0.15, 0, 0, -4.0)
+	run(d, 0.05, 0, 0, 0.5, 90, d.pos[1], d.pos[2], d.pos[3])
+	run(d, 0.2, 4.0, 0, 0, 90, d.pos[1], d.pos[2], d.pos[3]) -- outward (a +z return would be "inward", +y "upward")
+	run(d, 0.1, 0, 0, 0.5, 90, d.pos[1], d.pos[2], d.pos[3])
+	check("cooldown-blocked stroke reported as cooldown", d.missReason == "cooldown" and d.missPeak > 3.9)
+	run(d, 0.04, 0, 0, -3.0, 90, d.pos[1], d.pos[2], d.pos[3])
+	run(d, 0.1, 0, 0, 0.5, 90, d.pos[1], d.pos[2], d.pos[3])
+	check("short stroke after a cooldown miss stays short", d.missReason == "short")
+end
 do -- wind-up toward the head is ignored but flows straight into the strike
 	local d = mm.new()
 	d:update(1 / 90, 0, 0, 0, 0.6, 0, 0)
@@ -262,6 +273,16 @@ do -- step 14: game hit-notify decision
 	check("notify: after HIT_BLOCK passes", not skip)
 	skip = d({openWhy = "L2 stab", dt = 0.04, blockArmed = false, dashing = true})
 	check("notify: not armed passes", not skip)
+end
+
+do -- step 17: charge glow
+	local g = mm.chargeGlow
+	check("glow: none", g(1.0, false, 3) == 0)
+	check("glow: half ramp", math.abs(g(1.17, false, 3) - 0.9) < 1e-6)
+	check("glow: ramp clamps", math.abs(g(2.0, false, 3) - 1.8) < 1e-6)
+	local v = g(1.3, true, 3, 0.2)
+	check("glow: capped near max", v >= 2.4 - 1e-6 and v <= 3.0 + 1e-6)
+	check("glow: nil peak", g(nil, false, 3) == 0)
 end
 
 print(string.format("%d passed, %d failed", passed, failed))
