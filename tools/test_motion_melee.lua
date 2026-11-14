@@ -246,5 +246,23 @@ do -- rush buffer
 	check("rush: disabled never buffers", t and math.abs(t - 0.2) < dt and not r.pending)
 end
 
+do -- step 14: game hit-notify decision
+	local function d(o) o.block = 1.5 if o.blockArmed == nil then o.blockArmed = true end return mm.hitNotifyBegin(o) end
+	local skip, dash = d({dashing = true, openDashing = false, openWhy = "L2 stab", dt = 0.04})
+	check("notify: L2 lunge dash notify skipped", skip and not dash)
+	skip, dash = d({dashing = true, openDashing = false, openWhy = "swing", dt = 0.04})
+	check("notify: dash begun after a swing passes", not skip and dash)
+	skip, dash = d({dashing = true, openDashing = true, openWhy = "swing", dt = 0.3})
+	check("notify: swing made during a dash skips", skip and not dash)
+	skip, dash = d({wingDash = true, openWhy = "L2 stab", dt = 0.04})
+	check("notify: wing dash hitbox always passes", not skip and dash)
+	skip = d({openWhy = "swing", dt = 0.4})
+	check("notify: plain late window skipped", skip)
+	skip = d({openWhy = "swing", dt = 1.6})
+	check("notify: after HIT_BLOCK passes", not skip)
+	skip = d({openWhy = "L2 stab", dt = 0.04, blockArmed = false, dashing = true})
+	check("notify: not armed passes", not skip)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 return failed

@@ -13,6 +13,8 @@ QueensDomain-Win64-Shipping/scripts/libs/*
 !QueensDomain-Win64-Shipping/scripts/libs/motion_melee.lua
 !QueensDomain-Win64-Shipping/scripts/libs/qd_grip.lua
 !QueensDomain-Win64-Shipping/scripts/libs/qd_pickup.lua
+!QueensDomain-Win64-Shipping/scripts/libs/qd_belt.lua
+!QueensDomain-Win64-Shipping/scripts/libs/qd_ik.lua
 
 # Local noise
 *.log
@@ -28,3 +30,16 @@ tools/fakevr/third_party/
 tools/fakevr/driver/obj/
 tools/fakevr/backup/
 tools/fakevr/__pycache__/
+
+# AI agent working notes (local only)
+CLAUDE.md
+.claude/
+CODEMAP.md
+STATE.md
+STATE_archive.md
+PLAN_*.md
+REFERENCES.md
+TEST_*.md
+tools/codemap_notes.md
+tools/gen_codemap.sh
+tools/*.bak_*

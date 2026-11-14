@@ -262,4 +262,15 @@ function RushBuffer:update(dt, dashing)
 	return false
 end
 
+-- step 14: decides a game PlayerHitboxState notify Begin while our hit window logic is armed. Returns skip, dash.
+-- o: wingDash (notify flag), dashing (pawn.Dashing now), openDashing (at our open), openWhy, blockArmed, dt (s since
+-- our open), block (HIT_BLOCK). A dash that began after our open owns its notify, except the L2 alt attack's own
+-- lunge (spear): that dash starts ~0.05 s after our "L2 stab" window, which already covers the hit -> skip it.
+function M.hitNotifyBegin(o)
+	local dash = o.wingDash == true
+	if o.dashing == true and not o.openDashing and o.openWhy ~= "L2 stab" then dash = true end
+	local skip = (not dash) and o.blockArmed == true and (o.dt or 0) < (o.block or 1.5)
+	return skip, dash
+end
+
 return M

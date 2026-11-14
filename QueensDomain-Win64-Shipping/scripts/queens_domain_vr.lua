@@ -196,7 +196,7 @@ local configDefinition = {
 			-- test 17
 			{ widgetType = "slider_float", id = "stab_axis", label = "Stab detection: min alignment of hand motion toward the weapon tip (0 = off: any stroke with L2 held = alt attack)", initialValue = 0.0, range = {0.0, 0.95} },
 			-- test 19
-			{ widgetType = "checkbox", id = "motion_hit_window", label = "Hits during the whole physical swing (opens the hit window at swing start, closes when the hand slows)", initialValue = false },
+			{ widgetType = "checkbox", id = "motion_hit_window", label = "Hits during the whole physical swing (opens the hit window at swing start, closes when the hand slows)", initialValue = true },
 			{ widgetType = "checkbox", id = "crosshair_on_top", label = "Game crosshair drawn on top of scenery", initialValue = true },
 			{ widgetType = "checkbox", id = "weapon_fov_fix", label = "Undo the game's first-person weapon FOV squash (weapon drift/swim fix)", initialValue = true },
 			{ widgetType = "slider_float", id = "weapon_fpfov", label = "Weapon FOV value (0 = auto: game camera FOV, worked at 100; game uses 60)", initialValue = 0.0, range = {0.0, 160.0} },
@@ -1148,7 +1148,7 @@ local function hitWinOpen(weapon, why, primary)
 	local ok, err = pcall(function() api:get_local_pawn(0):ActivateHitbox(primary ~= false, false) end)
 	if not ok then meleeLog("HIT activate error " .. tostring(err)) return end
 	hitWin.open, hitWin.weapon, hitWin.t, hitWin.openClock, hitWin.hits, hitWin.blocked, hitWin.foes = true, weapon, 0.0, meleeClock, 0, 0, 0
-	hitWin.openDashing = false
+	hitWin.openDashing, hitWin.why = false, why
 	pcall(function() hitWin.openDashing = api:get_local_pawn(0).Dashing == true end)
 	hitWinPollHits() -- ActivateHitbox traces at once
 	hitWin.blockArmed = true -- skip only the next game notify window (this attack's), not a later trigger attack
@@ -1160,7 +1160,12 @@ local function hitWinTick(delta)
 	hitWinPollHits()
 	if activeWeapon ~= hitWin.weapon then hitWinClose("weapon changed")
 	elseif hitWin.t >= HIT_MAX then hitWinClose("max")
-	elseif hitWin.t >= HIT_MIN and (swingDetector.speed or 0) < swingDetector.rearmSpeed then hitWinClose("slow") end
+	elseif hitWin.t >= HIT_MIN and (swingDetector.speed or 0) < swingDetector.rearmSpeed then
+		-- step 14: the L2 lunge's own game window is skipped, so ours stays open while the lunge (dash) runs
+		local lunge = false
+		if hitWin.why == "L2 stab" then pcall(function() lunge = api:get_local_pawn(0).Dashing == true end) end
+		if not lunge then hitWinClose("slow") end
+	end
 end
 -- hooks (registered from hookFuntionsForRuntimeGeneratedClasses); pre-hook returning false skips the game's call
 function hookHitWindow()
@@ -1172,9 +1177,15 @@ function hookHitWindow()
 		pcall(function() dashing = api:get_local_pawn(0).Dashing end)
 		-- step 13 (verified): the dash-start notify has Wing_Dash_Hitbox=false but pawn.Dashing=true. A dash that began
 		-- after our window opened owns this notify: let it through. A swing made during the dash keeps the skip.
-		if dashing == true and not hitWin.openDashing then dash = true end
+		-- step 14: except the L2 alt attack's own lunge (spear): its dash notify would hit a second time.
 		local dt = meleeClock - hitWin.openClock
-		if not dash and hitWin.blockArmed and dt < HIT_BLOCK then
+		local skip = false
+		local okD, errD = pcall(function()
+			skip, dash = motionMelee.hitNotifyBegin({wingDash = dash, dashing = dashing, openDashing = hitWin.openDashing,
+				openWhy = hitWin.why, blockArmed = hitWin.blockArmed, dt = dt, block = HIT_BLOCK})
+		end)
+		if not okD then meleeLog("HIT notify decision error " .. tostring(errD)) return end
+		if skip then
 			hitWin.blockArmed = false
 			hitWin.blocked = hitWin.blocked + 1
 			meleeLog(string.format("HIT game window skipped dt=%.2f dashing=%s", dt, tostring(dashing)))
