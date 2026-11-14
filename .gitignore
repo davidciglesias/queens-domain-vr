@@ -40,6 +40,7 @@ STATE_archive.md
 PLAN_*.md
 REFERENCES.md
 TEST_*.md
+OPTIONS_*.md
 tools/codemap_notes.md
 tools/gen_codemap.sh
 tools/*.bak_*

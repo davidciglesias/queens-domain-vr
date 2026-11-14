@@ -85,12 +85,54 @@ function M.slotCount(v)
 	return v
 end
 
+-- step 21: an item's 3D model = the StaticMesh of its pickup class's "PickupGraphics" component template.
+-- fullClassName = get_full_name() of item.Pickup_BP ("BlueprintGeneratedClass /Game/X.X_C") -> template object name
+function M.meshTemplateName(fullClassName)
+	if type(fullClassName) ~= "string" then return nil end
+	local path = fullClassName:match("^%S+ (/%S+)$")
+	if path == nil then return nil end
+	return "StaticMeshComponent " .. path .. ".PickupGraphics_GEN_VARIABLE"
+end
+
+-- uniform scale so the mesh's largest half extent (cm) becomes halfCm; nil for a degenerate mesh
+function M.meshScale(maxHalfExtent, halfCm)
+	if type(maxHalfExtent) ~= "number" or maxHalfExtent < 0.01 then return nil end
+	local sc = halfCm / maxHalfExtent
+	if sc > 50.0 then sc = 50.0 end
+	return sc
+end
+
+-- the slot a grip would take now: the grabbed one, else the nearest card within r of either hand. Returns slot, hand
+function M.targetSlot(slots, n, hands, r, grab)
+	if grab ~= nil then return grab.slot, grab.hand end
+	local best, bh, bd = nil, nil, r
+	for h = 1, 2 do
+		local p = hands[h]
+		if p ~= nil then
+			local i, d = M.nearestSlot(slots, n, p.X, p.Y, p.Z, bd)
+			if i ~= nil then best, bh, bd = i, h, d end
+		end
+	end
+	return best, bh
+end
+
 ---------------------------------------------------------------- runtime (UEVR)
 local D = nil -- deps from init
 local S = {slots = {}, n = 0, items = {}, counts = {}, yaw = nil, refreshT = 0.0, shown = false, grab = nil,
 	gripPrev = {false, false}, gripEdge = {false, false}, gripNow = {false, false}, errLogged = false, rot = {Pitch = 0, Yaw = 0, Roll = 0},
 	loc = {X = 0, Y = 0, Z = 0}, scale = {X = 1, Y = 1, Z = 1}, created = 0, failT = 0.0, lastUseT = 0.0, angs = {}, handPos = {},
-	pressed = {false, false}, ownedCounts = {}, list = {}, selAddr = nil, selCheckT = 0.0, mask = nil, quick = nil, forceWalk = true}
+	pressed = {false, false}, ownedCounts = {}, list = {}, selAddr = nil, selCheckT = 0.0, mask = nil, quick = nil, forceWalk = true,
+	meshes = {}, mloc = {X = 0, Y = 0, Z = 0}, mrot = {Pitch = 0, Yaw = 0, Roll = 0}, mscale = {X = 1, Y = 1, Z = 1}, spin = 0.0, hl = nil}
+M.MODEL_HALF_CM = 4.5  -- model's largest half extent on the belt
+M.HL_SCALE = 1.4       -- highlighted (grip would take it) model scale
+M.SPIN_DPS = 40.0      -- idle model spin
+M.MODEL_FWD_CM = 5.0   -- model centre this far in front of its card
+local BG_N = {R = 0.32, G = 0.27, B = 0.18, A = 0.6}  -- parchment tint
+local BG_H = {R = 0.95, G = 0.78, B = 0.30, A = 0.85} -- highlighted card
+local EDGE_N = {R = 0.55, G = 0.47, B = 0.30, A = 0.55} -- model cards: frame only (any fill draws over the model)
+local EDGE_H = {R = 1.0, G = 0.80, B = 0.30, A = 1.0}
+local EDGE_ALIGN = {{0, 1}, {0, 3}, {1, 0}, {3, 0}} -- {H, V}: top, bottom, left, right bars (0 Fill, 1 Left/Top, 3 Right/Bottom)
+local EDGE_PX = 4
 M.S = S
 
 local function log(msg) if D ~= nil and D.log ~= nil then D.log("[BELT] " .. msg) end end
@@ -190,18 +232,33 @@ local function createSlot(i)
 	if widget == nil then S.failT = os.clock() + 5.0 log("no host widget") return nil end
 	local img = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
 	if img == nil then S.failT = os.clock() + 5.0 log("Image spawn failed") return nil end
-	local root, text = img, nil
+	local root, text, bgImg, edges = img, nil, nil, nil
 	pcall(function()
 		local ov = D.uevrUtils.spawn_object("Class /Script/UMG.Overlay", widget.WidgetTree)
 		local bg = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
 		local tb = D.uevrUtils.spawn_object("Class /Script/UMG.TextBlock", widget.WidgetTree)
 		if ov == nil or bg == nil then return end
-		bg:SetColorAndOpacity({R = 0.32, G = 0.27, B = 0.18, A = 0.6}) -- parchment tint: visible on dark ground
+		bgImg = bg
+		bg:SetColorAndOpacity(BG_N) -- parchment tint: visible on dark ground
 		local s0 = ov:AddChildToOverlay(bg)
 		local s1 = ov:AddChildToOverlay(img)
 		s0:SetHorizontalAlignment(0) s0:SetVerticalAlignment(0)
 		s1:SetHorizontalAlignment(0) s1:SetVerticalAlignment(0)
 		s1:SetPadding({Left = 4, Top = 4, Right = 4, Bottom = 4})
+		pcall(function() -- step 21: frame bars shown instead of the fill on model cards
+			local e = {}
+			for k = 1, 4 do
+				local bar = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
+				if bar == nil then return end
+				bar:SetBrushSize({X = EDGE_PX, Y = EDGE_PX})
+				bar:SetColorAndOpacity(EDGE_N)
+				bar:SetVisibility(2)
+				local sl = ov:AddChildToOverlay(bar)
+				sl:SetHorizontalAlignment(EDGE_ALIGN[k][1]) sl:SetVerticalAlignment(EDGE_ALIGN[k][2])
+				e[k] = bar
+			end
+			edges = e
+		end)
 		if tb ~= nil then
 			local s2 = ov:AddChildToOverlay(tb)
 			s2:SetHorizontalAlignment(2) s2:SetVerticalAlignment(2) -- right, bottom
@@ -217,7 +274,8 @@ local function createSlot(i)
 	pcall(function() comp:SetCastShadow(false) end)
 	pcall(function() comp:SetCollisionEnabled(0) end)
 	S.created = S.created + 1
-	local slot = {comp = comp, img = img, text = text, item = nil, x = 0, y = 0, z = 0, on = false, visible = true}
+	local slot = {comp = comp, img = img, text = text, bg = bgImg, edges = edges, item = nil, x = 0, y = 0, z = 0, on = false, visible = true,
+		mesh = nil, model = nil, hl = false}
 	log(string.format("card %d created text=%s", i, tostring(text ~= nil)))
 	return slot
 end
@@ -226,7 +284,111 @@ local function show(slot, v)
 	if slot.visible ~= v then
 		slot.visible = v
 		pcall(function() slot.comp:SetVisibility(v, true) end)
+		if slot.mesh ~= nil then pcall(function() slot.mesh:SetVisibility(v and slot.model ~= nil, false) end) end
 	end
+end
+
+-- step 21: {mesh, half, ox, oy, oz} for an item (cached per item; false = no model -> icon)
+local function itemModel(item)
+	local key = item:get_address()
+	local m = S.meshes[key]
+	if m ~= nil then return m or nil end
+	m = false
+	local why = "no pickup class"
+	pcall(function()
+		-- reflected names have spaces (SDK dump shows Pickup_BP / _Fallback_Visual_BP); live: consumables fill only the 2nd
+		local cls = nil
+		pcall(function() cls = item["Pickup BP"] end)
+		if cls == nil then pcall(function() cls = item["Drop BP / Fallback Visual BP"] end) end
+		for _ = 1, 4 do -- own template first, then parents' (a child that kept the base mesh has none of its own)
+			if cls == nil then break end
+			why = "no template"
+			local tn = M.meshTemplateName(cls:get_full_name())
+			local t = tn ~= nil and uevr.api:find_uobject(tn) or nil
+			local mesh = t ~= nil and t.StaticMesh or nil
+			if mesh ~= nil then
+				why = "bad bounds"
+				local b = mesh:GetBounds()
+				local e = b.BoxExtent
+				local half = math.max(e.X, e.Y, e.Z)
+				if M.meshScale(half, M.MODEL_HALF_CM) ~= nil then
+					m = {mesh = mesh, half = half, ox = b.Origin.X, oy = b.Origin.Y, oz = b.Origin.Z}
+				end
+				break
+			end
+			cls = cls:get_super()
+		end
+	end)
+	S.meshes[key] = m
+	log(string.format("model for item %s: %s", tostring(key), m and string.format("half=%.1f", m.half) or ("none (icon): " .. why)))
+	return m or nil
+end
+
+-- the card's 3D model follows its item; no model -> the icon shows instead
+local function setModel(slot)
+	local m = nil
+	if slot.item ~= nil then local ok, r = pcall(itemModel, slot.item) m = ok and r or nil end
+	if m ~= nil then
+		if slot.mesh == nil or D.uevrUtils.getValid(slot.mesh) == nil then
+			slot.mesh = nil
+			pcall(function()
+				local c = D.uevrUtils.createStaticMeshComponent(m.mesh, {parent = slot.comp:GetOwner(), manualAttachment = true})
+				if c ~= nil then
+					pcall(function() c:SetCastShadow(false) end)
+					pcall(function() c:SetCollisionEnabled(0) end)
+					slot.mesh = c
+				end
+			end)
+			if slot.mesh == nil then log("model component failed") end
+		else
+			pcall(function() slot.mesh:SetStaticMesh(m.mesh) end)
+		end
+		slot.mscale = nil
+		if slot.mesh == nil then m = nil end
+	end
+	slot.model = m
+	slot.styled = nil -- cardStyle re-applies fill vs frame
+	pcall(function() slot.img:SetVisibility(m ~= nil and 2 or 4) end) -- 2 Hidden, 4 SelfHitTestInvisible
+	if slot.mesh ~= nil then pcall(function() slot.mesh:SetVisibility(slot.visible and m ~= nil, false) end) end
+end
+
+-- icon card: tinted fill (gold when highlighted); model card: no fill (it would draw over the model), frame bars instead
+local function cardStyle(slot)
+	slot.styled = true
+	local frame = slot.model ~= nil and slot.edges ~= nil
+	if slot.bg ~= nil then
+		slot.bg:SetVisibility(frame and 2 or 4)
+		if not frame then slot.bg:SetColorAndOpacity(slot.hl and BG_H or BG_N) end
+	end
+	if slot.edges ~= nil then
+		for k = 1, 4 do
+			local bar = slot.edges[k]
+			bar:SetVisibility(frame and 4 or 2)
+			if frame then bar:SetColorAndOpacity(slot.hl and EDGE_H or EDGE_N) end
+		end
+	end
+end
+
+local function placeModel(slot, hx, hy, hz, hlOn)
+	local m = slot.model
+	if m == nil or slot.mesh == nil then return end
+	local sc = M.meshScale(m.half, M.MODEL_HALF_CM) * (hlOn and M.HL_SCALE or 1.0)
+	if slot.mscale ~= sc then
+		slot.mscale = sc
+		S.mscale.X, S.mscale.Y, S.mscale.Z = sc, sc, sc
+		slot.mesh:SetWorldScale3D(S.mscale)
+	end
+	-- in front of the card along the line to the head (the card is tilted to face it), mesh bounds centre on that
+	-- point, spinning about Z
+	local dx, dy, dz = hx - slot.x, hy - slot.y, hz - slot.z
+	local l = math.sqrt(dx * dx + dy * dy + dz * dz)
+	if l > 0.01 then l = M.MODEL_FWD_CM / l dx, dy, dz = dx * l, dy * l, dz * l else dx, dy, dz = 0.0, 0.0, 0.0 end
+	local yaw = math.rad(S.spin)
+	local c, s = math.cos(yaw), math.sin(yaw)
+	local ox, oy = (m.ox * c - m.oy * s) * sc, (m.ox * s + m.oy * c) * sc
+	S.mloc.X, S.mloc.Y, S.mloc.Z = slot.x + dx - ox, slot.y + dy - oy, slot.z + dz - m.oz * sc
+	S.mrot.Pitch, S.mrot.Yaw, S.mrot.Roll = 0.0, S.spin, 0.0
+	slot.mesh:K2_SetWorldLocationAndRotation(S.mloc, S.mrot, false, D.hr, true)
 end
 
 local function clearInput() -- no hand counts as "at a card" and no latched press survives a pause/menu/level change
@@ -375,6 +537,7 @@ function M.tick(dt)
 				s.item = S.items[i]
 				s.shownCount = nil
 				pcall(function() s.img:SetBrushFromTexture(s.item.ItemIcon, false) end)
+				setModel(s)
 			end
 			setText(s, S.counts[i] or 0)
 		end
@@ -398,6 +561,14 @@ function M.tick(dt)
 			end
 		end
 		S.gripEdge[h] = false
+	end
+	-- step 21: highlight the card a grip would take (bigger model, bright card) + haptic tick when it changes
+	local hl, hlHand = M.targetSlot(S.slots, S.n, hands, M.GRAB_CM, S.grab)
+	if hl ~= S.hl then
+		if hl ~= nil and hlHand ~= nil and S.grab == nil then
+			D.uevrUtils.triggerHapticVibration(hlHand == 1 and Handed.Left or Handed.Right, 0, 0.02, 150, 0.25)
+		end
+		S.hl = hl
 	end
 	-- held card follows the hand; at the mouth it is used
 	local g = S.grab
@@ -424,13 +595,24 @@ function M.tick(dt)
 	if want and not S.shown then S.forceWalk = true S.refreshT = 0.0 end -- re-read quick slots (menu edits) on next tick
 	S.shown = want
 	local sc = M.CARD_CM / M.PX
-	S.scale.X, S.scale.Y, S.scale.Z = sc, sc, sc
+	S.spin = (S.spin + M.SPIN_DPS * dt) % 360.0
 	for i = 1, S.n do
 		local s = S.slots[i]
 		if s ~= nil then
+			local hlOn = want and (i == S.hl)
 			if want then
 				pcall(place, s, s.x, s.y, s.z, hp.X, hp.Y, hp.Z)
-				if not s.scaled then s.scaled = true pcall(function() s.comp:SetWorldScale3D(S.scale) end) end
+				if s.scaled ~= hlOn then -- nil (new card) / false / true: card scale, 1.15x when highlighted
+					s.scaled = hlOn
+					local k = sc * (hlOn and 1.15 or 1.0)
+					S.scale.X, S.scale.Y, S.scale.Z = k, k, k
+					pcall(function() s.comp:SetWorldScale3D(S.scale) end)
+				end
+				pcall(placeModel, s, hp.X, hp.Y, hp.Z, hlOn)
+			end
+			if s.hl ~= hlOn or s.styled == nil then
+				s.hl = hlOn
+				pcall(cardStyle, s)
 			end
 			show(s, want)
 		end

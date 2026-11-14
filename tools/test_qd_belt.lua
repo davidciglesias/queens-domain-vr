@@ -74,5 +74,22 @@ do -- step 8b: window follows the selection, circular
 	check("window empty", c == 0)
 end
 
+do -- step 21: model template name, model scale, highlighted slot
+	check("template name", b.meshTemplateName("BlueprintGeneratedClass /Game/A/B_C.B_C") == "StaticMeshComponent /Game/A/B_C.B_C.PickupGraphics_GEN_VARIABLE")
+	check("template bad", b.meshTemplateName("nonsense") == nil and b.meshTemplateName(nil) == nil)
+	check("scale fits", near(b.meshScale(9.0, 4.5), 0.5))
+	check("scale degenerate", b.meshScale(0.0, 4.5) == nil and b.meshScale(nil, 4.5) == nil)
+	check("scale capped", b.meshScale(0.05, 4.5) == 50.0)
+	local slots = {{x = 0, y = 0, z = 0, on = true}, {x = 20, y = 0, z = 0, on = true}, {x = 40, y = 0, z = 0, on = false}}
+	local i, h = b.targetSlot(slots, 3, {nil, {X = 18, Y = 0, Z = 0}}, 14)
+	check("target right hand", i == 2 and h == 2)
+	i, h = b.targetSlot(slots, 3, {{X = 3, Y = 0, Z = 0}, {X = 15, Y = 0, Z = 0}}, 14)
+	check("target nearer hand wins", i == 1 and h == 1)
+	i = b.targetSlot(slots, 3, {{X = 40, Y = 0, Z = 0}, nil}, 14)
+	check("target hidden slot ignored", i == nil)
+	i, h = b.targetSlot(slots, 3, {nil, nil}, 14, {slot = 3, hand = 1})
+	check("target grab", i == 3 and h == 1)
+end
+
 print(string.format("qd_belt: %d passed, %d failed", passed, failed))
 return failed

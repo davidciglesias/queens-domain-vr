@@ -340,6 +340,39 @@ local configDefinition = {
 	}
 }
 
+-- step 24 (OPTIONS_proposal.md): user-facing options grouped on top; tuning/debug under a
+-- collapsed "Developer" tree node (ids and saved values unchanged); dropped widgets removed.
+pcall(function()
+	local GROUPS = {
+		{ "=== Combat ===", { "6dof_right", "motion_swing_speed", "motion_swing_cooldown", "charge_on_swing", "still_release_cancel", "charge_haptics", "charge_glow", "hit_haptics", "motion_hit_window", "l2_native_dodge", "l2_stab_gesture" } },
+		{ "=== Movement ===", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge" } },
+		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "pickup_beam", "belt", "belt_slots", "belt_drop", "shoulder_switch" } },
+		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "ui_y_offset" } },
+		{ "=== Body ===", { "ik_arms" } },
+	}
+	local DROP = { verical_status_bar = true, plain_weapon_mat = true }
+	local DEV_TEXT = { ["--- Item HUD on left hand ---"] = true, ["--- HP HUD on left hand ---"] = true }
+	local layout = configDefinition[1].layout
+	local byId, inGroup = {}, {}
+	for _, it in ipairs(layout) do if it.id ~= nil then byId[it.id] = it end end
+	for _, g in ipairs(GROUPS) do for _, id in ipairs(g[2]) do inGroup[id] = true end end
+	local out = {}
+	for _, g in ipairs(GROUPS) do
+		out[#out + 1] = { widgetType = "text", label = g[1] }
+		for _, id in ipairs(g[2]) do if byId[id] ~= nil then out[#out + 1] = byId[id] end end
+	end
+	out[#out + 1] = { widgetType = "tree_node", id = "dev_options", label = "Developer (tuning, debug, HUD placement)", initialOpen = false }
+	for _, it in ipairs(layout) do
+		if it.id ~= nil then
+			if not inGroup[it.id] and not DROP[it.id] then out[#out + 1] = it end
+		elseif DEV_TEXT[it.label] then
+			out[#out + 1] = it
+		end
+	end
+	out[#out + 1] = { widgetType = "tree_pop" }
+	configDefinition[1].layout = out
+end)
+
 configui.create(configDefinition)
 
 
@@ -1259,6 +1292,7 @@ local function meleeFire(speed, source)
 		rtSwingReleased = true
 		local ci = chargeInfo()
 		activeWeapon:AttackReleased()
+		pcall(attachHitboxesToWeaponTip) -- the game's AttackReleased moves the spear hitbox ~73 cm forward for one frame (fake trace 2026-11-14); put it back before the world tick
 		hitWinOpen(activeWeapon, "charged swing")
 		meleeLog(string.format("charged swing release held=%.2fs %s speed=%.2f %s", meleeClock - rtPressedAt, source, speed, ci))
 		return
@@ -1347,6 +1381,7 @@ local function meleeRelease(delta)
 		meleePressedWeapon = nil
 		if weapon ~= nil then
 			weapon:AttackReleased()
+			pcall(attachHitboxesToWeaponTip) -- the game's AttackReleased moves the spear hitbox ~73 cm forward for one frame (fake trace 2026-11-14); put it back before the world tick
 			meleeLog("AttackReleased")
 			if hitWin.open and hitWin.pressOpen then
 				hitWin.pressOpen = false
@@ -2452,7 +2487,7 @@ function applyPlainWeaponMaterial()
 	pcall(function()
 		local key = m:get_full_name()
 		local n = m:GetNumMaterials()
-		if configui.getValue("plain_weapon_mat") ~= false then
+		if configui.getValue("plain_weapon_mat") == true then -- widget dropped (step 24): nil = off
 			local first = m:GetMaterial(0)
 			if plainMat[key] ~= nil and first ~= nil and string.find(first:get_full_name(), "DefaultMaterial", 1, true) then return end
 			local def = uevr.api:find_uobject("Material /Engine/EngineMaterials/DefaultMaterial.DefaultMaterial")
@@ -3177,6 +3212,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 								attachHitboxesToWeaponTip()
 								local ci = chargeInfo()
 								activeWeapon:AttackReleased()
+								pcall(attachHitboxesToWeaponTip) -- the game's AttackReleased moves the spear hitbox ~73 cm forward for one frame (fake trace 2026-11-14); put it back before the world tick
 								pcall(function() meleeLog(string.format("RT AttackReleased held=%.2fs %s %s", meleeClock - rtPressedAt, ci, T20.S16.state(api:get_local_pawn(0)))) end)
 							end
 						end
@@ -3901,14 +3937,62 @@ function T20.pkMergeSpawned()
 		end)
 	end
 end
+-- step 19: enemy drops have PickupLocation 0 (the area filter rejects them by name) and their subclasses skip the
+-- hooked parent BeginPlay. GameInstance.LastHitEnemy is polled; when it dies, new location-0 items within 4 m of it
+-- are scanned for 8 s (every 0.5 s, ~4 ms each) and kept in pkDrops (re-added after every area-filtered rescan).
+T20.pkDrops, T20.pkDropW = {}, {pollT = 0.0, scanT = 0.0, untilT = 0.0, deadName = nil, x = 0.0, y = 0.0, z = 0.0}
+function T20.pkDropTick(now)
+	local w = T20.pkDropW
+	if now > w.pollT then
+		w.pollT = now + 0.25
+		pcall(function()
+			local e = api:get_engine().GameInstance.LastHitEnemy
+			if e ~= nil and (e.HP or 1) <= 0 then
+				local name = e:get_full_name()
+				if name ~= w.deadName then
+					w.deadName = name
+					local l = e:K2_GetActorLocation()
+					w.x, w.y, w.z, w.untilT, w.scanT = l.X, l.Y, l.Z, now + 8.0, now + 0.3
+				end
+			end
+		end)
+	end
+	if now > w.untilT or now < w.scanT then return end
+	w.scanT = now + 0.5
+	local all = UEVR_UObjectHook.get_objects_by_class(uevrUtils.get_class(pickableClassNames[1]), false)
+	for _, p in ipairs(all or {}) do
+		if p.PickupLocation == 0 and #T20.pkDrops < 64 then
+			pcall(function()
+				local l = p:K2_GetActorLocation()
+				local dx, dy, dz = l.X - w.x, l.Y - w.y, l.Z - w.z
+				if dx * dx + dy * dy + dz * dz > 400.0 * 400.0 or not isPickableValidForPickup(p) then return end
+				for _, q in ipairs(T20.pkDrops) do if q == p then return end end
+				for _, q in ipairs(currentLevelPickables) do if q == p then return end end
+				T20.pkDrops[#T20.pkDrops + 1] = p
+				table.insert(currentLevelPickables, p)
+				uevr.params.functions.log_info("[PICKUP] drop added (" .. #T20.pkDrops .. ")")
+			end)
+		end
+	end
+end
+-- after a rescan: prune taken/destroyed drops, re-add the rest
+function T20.pkReaddDrops()
+	for k = #T20.pkDrops, 1, -1 do
+		local p = T20.pkDrops[k]
+		local ok, valid = pcall(function() return uevrUtils.getValid(p) ~= nil and isPickableValidForPickup(p) end)
+		if ok and valid then table.insert(currentLevelPickables, p) else table.remove(T20.pkDrops, k) end
+	end
+end
 function pickupAssistTick()
 	local now = os.clock()
 	T20.pkHookSpawns(now)
 	if #T20.pkSpawned > 0 then T20.pkMergeSpawned() end
+	pcall(T20.pkDropTick, now)
 	-- fallback for item classes whose BeginPlay skips the parent's: full rescan every 10 s (60 s if it is slow)
 	if now > (T20.pkRescanT or 0.0) then
 		local t0 = os.clock()
 		pcall(populateCurrentLevelPickables)
+		if #T20.pkDrops > 0 then pcall(T20.pkReaddDrops) end
 		local dt = os.clock() - t0
 		T20.pkRescanT = now + (dt > 0.004 and 60.0 or 10.0)
 		if not T20.pkRescanLogged then T20.pkRescanLogged = true uevr.params.functions.log_info(string.format("[PICKUP] rescan %.1f ms, %d items", dt * 1000, #currentLevelPickables)) end
@@ -4460,6 +4544,19 @@ function checkIfPickablePickedup()
 			--mesh:SetRenderInDepthPass(false)
 		end]]
 		
+		-- step 19: Interact re-parents the mesh to the game's PickupAnimPivot (the flat "item comes to you" display,
+		-- removed on confirm). Restoring it to its original parent left it on the ground until the confirm.
+		local o = T20.pkOrig
+		local gameTook = false
+		pcall(function()
+			local par = currentPickupMesh.AttachParent
+			gameTook = par ~= nil and par ~= hands.getHandComponent(Handed.Left) and (o == nil or par ~= o.parent)
+		end)
+		if gameTook then
+			if o ~= nil and o.mesh == currentPickupMesh then pcall(function() currentPickupMesh:SetRelativeScale3D(o.scale) end) end
+			uevr.params.functions.log_info("[PICKUP] mesh taken by the game's pickup display")
+			o = nil
+		else
 		currentPickupMesh:K2_DetachFromComponent(
 			uevrUtils.fname_from_string(""),
 			0, -- LocationRule - 1 = KeepWorld, the mesh keeps the world transform it spawned with
@@ -4467,9 +4564,9 @@ function checkIfPickablePickedup()
 			1,           -- ScaleRule: 1 = KeepWorld
 			true         -- bCallModify
 		)
+		end
 		-- test 20: KeepRelative detach left the mesh visible near the world origin. Put it back on its original parent
 		-- with its original transform; the game's acquire logic then animates/hides it as in flat mode.
-		local o = T20.pkOrig
 		if o ~= nil and o.mesh == currentPickupMesh and o.parent ~= nil then
 			local okR, errR = pcall(function()
 				currentPickupMesh:K2_AttachToComponent(o.parent, uevrUtils.fname_from_string(""), 0, 0, 0, false)
@@ -4525,6 +4622,8 @@ function on_level_change(level)
     --currentAreaMusic = getCurrentAreaMusic()
 	lastTouchedSaveArea = nil
 	if T20.belt ~= nil then pcall(T20.belt.reset) end -- test 21: belt cards die with the level
+	T20.pkDrops = {} -- step 19
+	T20.pkDropW.untilT = 0.0
 	if T20.ik ~= nil then pcall(T20.ik.reset) end -- step 3: the IK copy dies with the pawn
 	-- test 20: no pickup state may survive into the new level (actors are gone)
 	currentAvailablePickable, pickableHeld = nil, false
