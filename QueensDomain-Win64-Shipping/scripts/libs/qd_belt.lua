@@ -4,7 +4,7 @@
 local M = {}
 
 M.MAX_SLOTS = 5
-M.STEP_DEG = 26.0      -- angle between neighbouring cards around the body
+M.STEP_DEG = 33.0      -- angle between neighbouring cards around the body (step 30: 26 let the frames overlap)
 M.RADIUS = 24.0        -- cm from the body axis
 M.FORWARD = 4.0        -- cm: body axis sits slightly in front of the head position
 M.CARD_CM = 12.0       -- card width in the world
@@ -71,6 +71,19 @@ end
 
 -- belt window over the quick list (circular, like the game's cycle): returns start index, count. With more items than
 -- max the selected item sits in the middle (left of middle for even max); otherwise the list is shown as is (stable).
+-- step 39: previous / next entries around cur in a slot list (n entries, may hold nils). Returns prev, next
+-- (nil when there is no other weapon). Game order (Test 49): NextWeapon = index + 1, PreviousWeapon = index - 1, both wrap.
+function M.neighbours(list, n, cur, selIdx0)
+	local ci = nil
+	for i = 1, n do if list[i] ~= nil and list[i] == cur then ci = i break end end
+	if ci == nil and selIdx0 ~= nil and selIdx0 >= 0 and selIdx0 < n then ci = selIdx0 + 1 end
+	if ci == nil then return nil, nil end
+	local prev, nxt = nil, nil
+	for k = 1, n - 1 do local e = list[(ci - 1 + k) % n + 1] if e ~= nil and e ~= list[ci] then nxt = e break end end
+	for k = 1, n - 1 do local e = list[(ci - 1 - k) % n + 1] if e ~= nil and e ~= list[ci] then prev = e break end end
+	return prev, nxt
+end
+
 function M.window(total, sel, max)
 	local cnt = math.min(total, max)
 	if total <= max or cnt <= 0 or sel == nil then return 1, cnt end
@@ -118,7 +131,7 @@ end
 
 ---------------------------------------------------------------- runtime (UEVR)
 local D = nil -- deps from init
-local S = {slots = {}, n = 0, items = {}, counts = {}, yaw = nil, refreshT = 0.0, shown = false, grab = nil,
+local S = {slots = {}, wslots = {}, wItems = {}, wlist = {}, n = 0, items = {}, counts = {}, yaw = nil, refreshT = 0.0, shown = false, grab = nil,
 	gripPrev = {false, false}, gripEdge = {false, false}, gripNow = {false, false}, errLogged = false, rot = {Pitch = 0, Yaw = 0, Roll = 0},
 	loc = {X = 0, Y = 0, Z = 0}, scale = {X = 1, Y = 1, Z = 1}, created = 0, failT = 0.0, lastUseT = 0.0, angs = {}, handPos = {},
 	pressed = {false, false}, ownedCounts = {}, list = {}, selAddr = nil, selCheckT = 0.0, mask = nil, quick = nil, forceWalk = true,
@@ -127,10 +140,14 @@ M.MODEL_HALF_CM = 4.5  -- model's largest half extent on the belt
 M.HL_SCALE = 1.4       -- highlighted (grip would take it) model scale
 M.SPIN_DPS = 40.0      -- idle model spin
 M.MODEL_FWD_CM = 5.0   -- model centre this far in front of its card
+M.HOLD_FWD_CM = 7.0    -- step 31: held model centre this far forward of the controller
+M.HOLD_UP_CM = -1.0
 local BG_N = {R = 0.32, G = 0.27, B = 0.18, A = 0.6}  -- parchment tint
 local BG_H = {R = 0.95, G = 0.78, B = 0.30, A = 0.85} -- highlighted card
 local EDGE_N = {R = 0.55, G = 0.47, B = 0.30, A = 0.55} -- model cards: frame only (any fill draws over the model)
 local EDGE_H = {R = 1.0, G = 0.80, B = 0.30, A = 1.0}
+local EDGE_S = {R = 0.35, G = 0.85, B = 1.0, A = 1.0} -- step 33: the game's selected consumable (B uses it)
+local BG_S = {R = 0.25, G = 0.55, B = 0.70, A = 0.75}
 local EDGE_ALIGN = {{0, 1}, {0, 3}, {1, 0}, {3, 0}} -- {H, V}: top, bottom, left, right bars (0 Fill, 1 Left/Top, 3 Right/Bottom)
 local EDGE_PX = 4
 M.S = S
@@ -214,6 +231,18 @@ function M.refresh(forceWalk)
 	end
 	for i = n + 1, M.MAX_SLOTS do S.items[i], S.counts[i] = nil, nil end
 	S.n = n
+	-- step 39: item data of the previous / next slot weapon (left / right shoulder) for the display-only cards
+	local pd, nd = nil, nil
+	pcall(function()
+		local ws = pawn.WeaponSelection
+		local t = S.wlist
+		for i = #t, 1, -1 do t[i] = nil end
+		ws:GetWeaponsInSlots(false, t)
+		local pw, nw = M.neighbours(t, #t, pawn.CurrentInHandWeapon, ws.SelectedWeaponSlot)
+		if pw ~= nil then pd = pw.ItemData end
+		if nw ~= nil then nd = nw.ItemData end
+	end)
+	S.wItems[1], S.wItems[2] = pd, nd
 end
 
 local function setText(slot, count)
@@ -358,13 +387,13 @@ local function cardStyle(slot)
 	local frame = slot.model ~= nil and slot.edges ~= nil
 	if slot.bg ~= nil then
 		slot.bg:SetVisibility(frame and 2 or 4)
-		if not frame then slot.bg:SetColorAndOpacity(slot.hl and BG_H or BG_N) end
+		if not frame then slot.bg:SetColorAndOpacity(slot.hl and BG_H or (slot.sel and BG_S or BG_N)) end
 	end
 	if slot.edges ~= nil then
 		for k = 1, 4 do
 			local bar = slot.edges[k]
 			bar:SetVisibility(frame and 4 or 2)
-			if frame then bar:SetColorAndOpacity(slot.hl and EDGE_H or EDGE_N) end
+			if frame then bar:SetColorAndOpacity(slot.hl and EDGE_H or (slot.sel and EDGE_S or EDGE_N)) end
 		end
 	end
 end
@@ -396,7 +425,36 @@ local function clearInput() -- no hand counts as "at a card" and no latched pres
 	S.gripEdge[1], S.gripEdge[2] = false, false
 end
 
+-- step 31: a grabbed model rides the controller (no spin, no card); released -> back to belt placement
+local function holdModel(slot, ctrl)
+	if ctrl ~= nil then
+		local m = slot.model
+		local sc = M.meshScale(m.half, M.MODEL_HALF_CM) * M.HL_SCALE
+		slot.mesh:K2_AttachToComponent(ctrl, D.uevrUtils.fname_from_string(""), 2, 2, 1, false)
+		S.mscale.X, S.mscale.Y, S.mscale.Z = sc, sc, sc
+		slot.mesh:SetWorldScale3D(S.mscale)
+		S.mloc.X, S.mloc.Y, S.mloc.Z = M.HOLD_FWD_CM - m.ox * sc, -m.oy * sc, M.HOLD_UP_CM - m.oz * sc
+		S.mrot.Pitch, S.mrot.Yaw, S.mrot.Roll = 0.0, 0.0, 0.0
+		slot.mesh:K2_SetRelativeLocationAndRotation(S.mloc, S.mrot, false, D.hr, true)
+		slot.held = true
+	else
+		slot.held = false
+		slot.mscale = nil
+		slot.mesh:K2_DetachFromComponent(1, 1, 1, false)
+	end
+	slot.visible = nil -- show() re-applies card/mesh visibility
+end
+
+local function releaseHeld()
+	for i = 1, M.MAX_SLOTS do
+		local s = S.slots[i]
+		if s ~= nil and s.held then pcall(holdModel, s, nil) end
+	end
+end
+
 function M.hideAll()
+	releaseHeld()
+	for k = 1, 2 do if S.wslots[k] ~= nil then show(S.wslots[k], false) end end
 	for i = 1, M.MAX_SLOTS do local s = S.slots[i] if s ~= nil then show(s, false) s.on = false end end
 	S.shown = false
 	S.grab = nil
@@ -406,7 +464,9 @@ end
 -- level change: the cards' owner actor dies with the level; drop them so tick recreates them
 function M.reset()
 	M.hideAll()
+	for i = 1, M.MAX_SLOTS do local s = S.slots[i] if s ~= nil then s.held = false end end
 	for i = 1, M.MAX_SLOTS do S.slots[i] = nil end
+	S.wslots[1], S.wslots[2] = nil, nil
 	S.yaw = nil
 end
 
@@ -489,6 +549,39 @@ local function useItem(item)
 	return ok, err
 end
 
+-- step 32/39: display-only cards under the belt row: previous weapon (left shoulder) on the left, next (right) on the right
+M.WEAPON_DROP_CM = 18.0 -- below the belt row ...
+M.WEAPON_RADIUS = 12.0  -- ... closer to the body (seen from above they clear the outer belt cards; Test 49) ...
+M.WEAPON_DEG = 55.0     -- ... this far left / right of the centre
+local function weaponCard(want, cx, cy, cz, hp, k)
+	local w = S.wslots[k]
+	local item = S.wItems[k]
+	if not want or item == nil then
+		if w ~= nil then show(w, false) end
+		return
+	end
+	if w == nil or D.uevrUtils.getValid(w.comp) == nil then
+		w = createSlot(0)
+		S.wslots[k] = w
+		if w == nil then return end
+		pcall(function() w.bg:SetColorAndOpacity(BG_N) end)
+		for k = 1, 4 do pcall(function() w.edges[k]:SetVisibility(4) w.edges[k]:SetColorAndOpacity(EDGE_H) end) end
+	end
+	if w.item ~= item then
+		w.item = item
+		pcall(function() w.img:SetBrushFromTexture(w.item.ItemIcon, false) end)
+	end
+	local x, y = M.slotPos(cx, cy, S.yaw, (k == 1 and -1 or 1) * M.WEAPON_DEG, M.WEAPON_RADIUS)
+	pcall(place, w, x, y, cz - M.WEAPON_DROP_CM, hp.X, hp.Y, hp.Z)
+	if w.scaled == nil then
+		w.scaled = true
+		local k = M.CARD_CM / M.PX
+		S.scale.X, S.scale.Y, S.scale.Z = k, k, k
+		pcall(function() w.comp:SetWorldScale3D(S.scale) end)
+	end
+	show(w, true)
+end
+
 function M.tick(dt)
 	if not enabled() then if S.shown or S.grab ~= nil then M.hideAll() end return end
 	local now = os.clock()
@@ -535,6 +628,8 @@ function M.tick(dt)
 			s.on = true
 			if s.item ~= S.items[i] then
 				s.item = S.items[i]
+				s.itemAddr = nil
+				pcall(function() s.itemAddr = s.item:get_address() end)
 				s.shownCount = nil
 				pcall(function() s.img:SetBrushFromTexture(s.item.ItemIcon, false) end)
 				setModel(s)
@@ -596,11 +691,29 @@ function M.tick(dt)
 	S.shown = want
 	local sc = M.CARD_CM / M.PX
 	S.spin = (S.spin + M.SPIN_DPS * dt) % 360.0
+	local held = S.grab ~= nil and S.grab.slot or nil
+	for i = 1, M.MAX_SLOTS do -- step 31: hold/release transitions
+		local s = S.slots[i]
+		if s ~= nil then
+			local wantHeld = i == held and s.model ~= nil and s.mesh ~= nil
+			if wantHeld ~= (s.held == true) then
+				local ok, err = pcall(holdModel, s, wantHeld and D.controllers.getController(S.grab.hand == 1 and 0 or 1) or nil)
+				if not ok then s.held = false log("hold failed: " .. tostring(err)) end
+			end
+		end
+	end
 	for i = 1, S.n do
 		local s = S.slots[i]
 		if s ~= nil then
-			local hlOn = want and (i == S.hl)
-			if want then
+			local hlOn = want and (i == S.hl) and not s.held
+			local selOn = s.itemAddr ~= nil and s.itemAddr == S.selAddr
+			if s.held then
+				if s.visible ~= "held" then
+					s.visible = "held"
+					pcall(function() s.comp:SetVisibility(false, false) end)
+					pcall(function() s.mesh:SetVisibility(true, false) end)
+				end
+			elseif want then
 				pcall(place, s, s.x, s.y, s.z, hp.X, hp.Y, hp.Z)
 				if s.scaled ~= hlOn then -- nil (new card) / false / true: card scale, 1.15x when highlighted
 					s.scaled = hlOn
@@ -610,13 +723,15 @@ function M.tick(dt)
 				end
 				pcall(placeModel, s, hp.X, hp.Y, hp.Z, hlOn)
 			end
-			if s.hl ~= hlOn or s.styled == nil then
-				s.hl = hlOn
+			if s.hl ~= hlOn or s.sel ~= selOn or s.styled == nil then
+				s.hl, s.sel = hlOn, selOn
 				pcall(cardStyle, s)
 			end
-			show(s, want)
+			if not s.held then show(s, want) end
 		end
 	end
+	pcall(weaponCard, want, cx, cy, cz, hp, 1)
+	pcall(weaponCard, want, cx, cy, cz, hp, 2)
 end
 
 return M

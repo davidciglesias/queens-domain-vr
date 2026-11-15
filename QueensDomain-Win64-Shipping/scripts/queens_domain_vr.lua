@@ -208,16 +208,20 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "pickup_assist", label = "Easy pickups: point left hand or crosshair at an item (beam shows it), grip or X grabs", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_take", label = "Grabbed item goes straight to the inventory (off = press A to take it)", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_hold", label = "Items without a hand-tuned grip are held upright in the fist, shrunk to hand size", initialValue = true },
-			{ widgetType = "checkbox", id = "shoulder_switch", label = "Right grip at your right shoulder switches weapon (like D-pad right)", initialValue = true },
+			{ widgetType = "checkbox", id = "shoulder_switch", label = "Shoulder weapon switch: right grip at the right shoulder = next weapon, left grip at the left shoulder = previous", initialValue = true },
 			{ widgetType = "checkbox", id = "belt", label = "Consumable belt: owned items hang at your waist (look down); grip one, bring it to your mouth to use it", initialValue = true },
+			{ widgetType = "checkbox", id = "item_hud", label = "Selected-item HUD on the left hand (off: the belt card of the selected item gets a blue frame)", initialValue = false },
 			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 5, range = {1, 5} },
 			{ widgetType = "slider_float", id = "belt_drop", label = "Belt height: cm below your eyes", initialValue = 60.0, range = {30.0, 95.0} },
 			-- step 3: IK arms (libs/qd_ik.lua). The IK lib is only loaded when this is on at script load
 			{ widgetType = "checkbox", id = "ik_arms", label = "IK arms (experimental): arms follow your hands. Needs motion controls melee; turning it on needs a game restart", initialValue = false },
+			{ widgetType = "checkbox", id = "beam_on_x", label = "Beam only while X is held (aim with the left hand, release X to pull the item in); off = beam always on", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_beam", label = "Pickup beam from the left hand to the targeted item", initialValue = true },
 			{ widgetType = "slider_float", id = "pickup_cone", label = "Pickup aim tolerance (degrees, on top of 10 cm)", initialValue = 6.0, range = {1.0, 20.0} },
 			{ widgetType = "slider_float", id = "pickup_range", label = "Pickup reach (m)", initialValue = 3.5, range = {1.0, 8.0} },
 			{ widgetType = "checkbox", id = "auto_grip", label = "Auto grip for weapons with no saved grip (computed from the weapon's shape)", initialValue = true },
+			{ widgetType = "checkbox", id = "knife_point_pose", label = "Left hand points while aiming throwing knives", initialValue = true },
+			{ widgetType = "checkbox", id = "weapon_hand_hidden", label = "Hide the right hand model while holding a weapon", initialValue = true },
 			{ widgetType = "checkbox", id = "hit_haptics", label = "Weapon hand vibrates when a hit lands", initialValue = true },
 			-- test 9: usable-item HUD (ConsumableHUD) on the left hand, tweak live
 			{ widgetType = "text", label = "--- Item HUD on left hand ---" },
@@ -346,9 +350,9 @@ pcall(function()
 	local GROUPS = {
 		{ "=== Combat ===", { "6dof_right", "motion_swing_speed", "motion_swing_cooldown", "charge_on_swing", "still_release_cancel", "charge_haptics", "charge_glow", "hit_haptics", "motion_hit_window", "l2_native_dodge", "l2_stab_gesture" } },
 		{ "=== Movement ===", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge" } },
-		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "pickup_beam", "belt", "belt_slots", "belt_drop", "shoulder_switch" } },
+		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "beam_on_x", "pickup_beam", "belt", "item_hud", "belt_slots", "belt_drop", "shoulder_switch" } },
 		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "ui_y_offset" } },
-		{ "=== Body ===", { "ik_arms" } },
+		{ "=== Body ===", { "weapon_hand_hidden", "knife_point_pose", "ik_arms" } },
 	}
 	local DROP = { verical_status_bar = true, plain_weapon_mat = true }
 	local DEV_TEXT = { ["--- Item HUD on left hand ---"] = true, ["--- HP HUD on left hand ---"] = true }
@@ -1664,7 +1668,7 @@ function applyItemHudTransform(delta)
 				itemIconLayoutDone = true
 				uevr.params.functions.log_info(string.format("[HUD] item icon re-slotted at (%.0f,%.0f) size %.0f", o.Left + (itemHudVals[11] or 0), o.Top + (itemHudVals[12] or 0), sz))
 			end
-			local want = true -- test 15: show the item HUD frame even with 0 units
+			local want = configui.getValue("item_hud") == true or configui.getValue("belt") == false -- step 33: the belt marks the selected item instead (test 15: frame shown even with 0 units)
 			if itemHudComponent:IsVisible() ~= want then itemHudComponent:SetVisibility(want, false) end
 			if v ~= itemIconLastVis then
 				itemIconLastVis = v
@@ -2790,7 +2794,13 @@ function applyNormalModeSettings(delta)
 		print("lastTouchedSaveArea", lastTouchedSaveArea)
 		populateCurrentLevelPickables()
 	end
-	hands.hideHands(false)
+	-- step 35: the right hand model sat on top of the weapon grip -> hidden while a melee weapon is held (option weapon_hand_hidden)
+	if configui.getValue("weapon_hand_hidden") ~= false and activeWeaponMesh ~= nil then
+		hands.hideHand(Handed.Left, false)
+		hands.hideHand(Handed.Right, true)
+	else
+		hands.hideHands(false)
+	end
 	
 	--[[local game_engine_class = api:find_uobject("Class /Script/Engine.GameEngine")
 	local game_engine = UEVR_UObjectHook.get_first_object_by_class(game_engine_class)
@@ -2878,7 +2888,15 @@ function on_xinput_get_state(retval, user_index, state)
 		local isHoldingWeapon = activeWeaponMesh ~= nil
 		--print("isHoldingWeapon", isHoldingWeapon)
 		local hand = Handed.Right
-		hands.handleInput(state, isHoldingWeapon, hand)
+		-- step 36: knife aim -> left hand points (the lib curls the index on left trigger, the rest on left grip): fake
+		-- grip held + trigger released for the hand animation only, then restore what the game gets
+		local g = state.Gamepad
+		local fake = showLaser == true and configui.getValue("knife_point_pose") ~= false
+		local b0, t0 = g.wButtons, g.bLeftTrigger
+		if fake then g.wButtons = b0 | XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0 end
+		local okH, errH = pcall(hands.handleInput, state, isHoldingWeapon, hand)
+		if fake then g.wButtons, g.bLeftTrigger = b0, t0 end
+		if not okH and not T20.handErr then T20.handErr = true uevr.params.functions.log_info("[HANDS] handleInput error: " .. tostring(errH)) end
 		
 		-- test 21: second call removed. The offHHand typo (nil -> Handed.Right) made it drive the RIGHT hand as empty-handed,
 		-- so releasing grip or the thumbrest opened the fingers around the weapon; fixing the typo would do the same via the
@@ -3156,6 +3174,14 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 				pcall(function() uevr.params.functions.log_info(string.format("[INPUT] idx=%s buttons=0x%04X normalPlay=%s", tostring(user_index), mask, tostring(normalPlay))) end)
 			end
 		end
+		pcall(function() -- step 29: beam_on_x: hold X = aim the beam, release = grab; X stays from the game once an item was targeted
+			local x = (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) ~= 0
+			T20.xRelAimed = (T20.xRaw == true) and not x and T20.xAimed == true
+			if x and not T20.xRaw then T20.xGame = canInteract() == true end -- a press while the game offers an interaction is the game's (no beam)
+			if not x then T20.xAimed = false T20.xGame = false end
+			T20.xRaw = x
+			if x and T20.xAimed then state.Gamepad.wButtons = state.Gamepad.wButtons & ~XINPUT_GAMEPAD_X end
+		end)
 		if T20.xHeld and normalPlay ~= true then -- test 20: a take may open a popup while X is still down
 			if state.Gamepad.wButtons & XINPUT_GAMEPAD_X ~= 0 then state.Gamepad.wButtons = state.Gamepad.wButtons & ~XINPUT_GAMEPAD_X else T20.xHeld = false end
 		end
@@ -3335,6 +3361,11 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 				--print("picking up")
 				-- test 20: with pickup_assist, X (Steam Frame layout) grabs too; auto take happens in the tick
 				local xGrab = configui.getValue("pickup_assist") ~= false and configui.getValue("frame_layout") ~= false and state.Gamepad.wButtons & XINPUT_GAMEPAD_X ~= 0
+				if T20.beamOnX() then -- step 29: X held at a target = aiming (swallowed); the grab happens on release
+					if T20.xRaw and not T20.xGame then T20.xAimed = true state.Gamepad.wButtons = state.Gamepad.wButtons & ~XINPUT_GAMEPAD_X end
+					xGrab = T20.xRelAimed == true
+					if xGrab then T20.xRelAimed = false end
+				end
 				if state.Gamepad.wButtons & XINPUT_GAMEPAD_A ~= 0 then
 					if xGrab then T20.xHeld = true state.Gamepad.wButtons = state.Gamepad.wButtons & ~XINPUT_GAMEPAD_X end -- never jump with A+X
 					if pickableHeld then
@@ -3911,9 +3942,12 @@ function T20.pkCamLoc()
 end
 -- items spawned after the level scan (enemy drops etc.) join the list via a ReceiveBeginPlay post-hook (queued,
 -- merged in the tick). Hooked once; retried every 5 s until the class is loaded.
-T20.pkSpawned, T20.pkHookT, T20.pkHooked = {}, 0.0, false
+-- step 34 (Test 49): OFF. Our tick's ActivateHitbox can kill an enemy synchronously; its drop then spawns an item whose
+-- hooked ReceiveBeginPlay fails with "resource deadlock" and aborts the rest of the enemy's death (body stays standing).
+-- Spawned items are found by the 10 s rescan and the enemy-drop / breakable scans instead.
+T20.pkSpawned, T20.pkHookT, T20.pkHooked, T20.pkHookEnabled = {}, 0.0, false, false
 function T20.pkHookSpawns(now)
-	if T20.pkHooked or now < T20.pkHookT then return end
+	if not T20.pkHookEnabled or T20.pkHooked or now < T20.pkHookT then return end
 	T20.pkHookT = now + 5.0
 	local ok, res = pcall(hook_function, pickableClassNames[1], "ReceiveBeginPlay", false, nil,
 		function(fn, obj, locals, result) if obj ~= nil and #T20.pkSpawned < 64 then T20.pkSpawned[#T20.pkSpawned + 1] = obj end end, false)
@@ -3975,6 +4009,80 @@ function T20.pkDropTick(now)
 		end
 	end
 end
+-- step 28: breakables. Permabreakable_base_C (barrels/crates: HP <= 0) and Pot_Base_C (pots/vases: Broken, they respawn)
+-- hold pre-placed items in ActorsToActivateOnBreak that turn valid on break with PickupLocation 0 (area filter rejects
+-- them; the 60 s rescan is too late), and pots also spawn a random Drop at DropLocation (subclass: misses the spawn hook).
+-- Cache breakables (30 s); every 0.5 s check those within 8 m; on a break: add their valid items for 10 s and start
+-- the enemy-drop scan (pkDropW, 8 s, location-0 items within 4 m) at the breakable.
+T20.pkBrk = {list = {}, n = 0, scanT = 0.0, pollT = 0.0}
+T20.PK_BRK_CLASSES = {
+	{"BlueprintGeneratedClass /Game/Props/Containers/Permabreakable_base.Permabreakable_base_C", 1},
+	{"BlueprintGeneratedClass /Game/Props/Pots/Pot_Base.Pot_Base_C", 2},
+}
+function T20.pkAddDrop(p)
+	for _, q in ipairs(T20.pkDrops) do if q == p then return false end end
+	for _, q in ipairs(currentLevelPickables) do if q == p then return false end end
+	if #T20.pkDrops >= 64 then return false end
+	T20.pkDrops[#T20.pkDrops + 1] = p
+	table.insert(currentLevelPickables, p)
+	return true
+end
+function T20.pkBrkBroken(e)
+	if e.kind == 2 then return e.a.Broken == true end
+	return (e.a.HP or 1) <= 0
+end
+function T20.pkBreakTick(now)
+	local B = T20.pkBrk
+	if now > B.scanT then
+		B.scanT = now + 30.0
+		local n = 0
+		for _, kc in ipairs(T20.PK_BRK_CLASSES) do
+			local cls = uevr.api:find_uobject(kc[1])
+			for _, a in ipairs(cls ~= nil and UEVR_UObjectHook.get_objects_by_class(cls, false) or {}) do
+				pcall(function()
+					local l = a:K2_GetActorLocation()
+					n = n + 1
+					local e = B.list[n]
+					if e == nil or e.a ~= a then e = {a = a, kind = kc[2], brokenT = nil, was = nil} B.list[n] = e end
+					e.x, e.y, e.z = l.X, l.Y, l.Z
+				end)
+			end
+		end
+		for k = n + 1, #B.list do B.list[k] = nil end
+		B.n = n
+	end
+	if now < B.pollT then return end
+	B.pollT = now + 0.5
+	local pawn = api:get_local_pawn(0)
+	if pawn == nil then return end
+	local pl = pawn:K2_GetActorLocation()
+	for k = 1, B.n do
+		local e = B.list[k]
+		local dx, dy, dz = e.x - pl.X, e.y - pl.Y, e.z - pl.Z
+		if dx * dx + dy * dy + dz * dz < 800.0 * 800.0 then
+			pcall(function()
+				local br = T20.pkBrkBroken(e)
+				if br and e.was ~= true then
+					e.brokenT = now
+					if e.was == false then -- a break we saw happen: scan for its spawned drop
+						local w = T20.pkDropW
+						w.x, w.y, w.z, w.untilT, w.scanT = e.x, e.y, e.z, now + 8.0, now + 0.3
+						uevr.params.functions.log_info("[PICKUP] breakable broke (kind " .. e.kind .. ")")
+					end
+				end
+				e.was = br
+				if e.brokenT ~= nil then
+					local items = e.a.ActorsToActivateOnBreak
+					for _, p in ipairs(items or {}) do
+						local okV, v = pcall(isPickableValidForPickup, p)
+						if okV and v and T20.pkAddDrop(p) then uevr.params.functions.log_info("[PICKUP] break item added (" .. #T20.pkDrops .. ")") end
+					end
+					if now - e.brokenT > 10.0 then e.brokenT = nil end
+				end
+			end)
+		end
+	end
+end
 -- after a rescan: prune taken/destroyed drops, re-add the rest
 function T20.pkReaddDrops()
 	for k = #T20.pkDrops, 1, -1 do
@@ -3983,11 +4091,14 @@ function T20.pkReaddDrops()
 		if ok and valid then table.insert(currentLevelPickables, p) else table.remove(T20.pkDrops, k) end
 	end
 end
+function T20.beamOnX() return configui.getValue("beam_on_x") ~= false and configui.getValue("frame_layout") ~= false end
+
 function pickupAssistTick()
 	local now = os.clock()
 	T20.pkHookSpawns(now)
 	if #T20.pkSpawned > 0 then T20.pkMergeSpawned() end
 	pcall(T20.pkDropTick, now)
+	pcall(T20.pkBreakTick, now)
 	-- fallback for item classes whose BeginPlay skips the parent's: full rescan every 10 s (60 s if it is slow)
 	if now > (T20.pkRescanT or 0.0) then
 		local t0 = os.clock()
@@ -4011,7 +4122,10 @@ function pickupAssistTick()
 		T20.pk.opts.range = (configui.getValue("pickup_range") or 3.5) * 100.0
 		T20.pkRefresh(ex, ey, ez)
 	end
+	local rangeSave = T20.pk.opts.range
+	if T20.beamOnX() and (not T20.xRaw or T20.xGame) then T20.pk.opts.range = 0.0 end -- step 29: no ray targets (beam) unless X is held; hand-at-item still works
 	local i, score = T20.pickup.select(T20.pk.cands, T20.pk.n, hp.X, hp.Y, hp.Z, hd.X, hd.Y, hd.Z, ex, ey, ez, T20.pk.target, T20.pk.opts)
+	T20.pk.opts.range = rangeSave
 	local c = i ~= nil and T20.pk.cands[i] or nil
 	-- occlusion check on a new target and every 0.3 s for the current one
 	if c ~= nil and score >= 0 and (c.obj ~= T20.pk.target or now > T20.pk.visT) then -- hand at the item: no eye test
@@ -4623,6 +4737,7 @@ function on_level_change(level)
 	lastTouchedSaveArea = nil
 	if T20.belt ~= nil then pcall(T20.belt.reset) end -- test 21: belt cards die with the level
 	T20.pkDrops = {} -- step 19
+	T20.pkBrk.list, T20.pkBrk.n, T20.pkBrk.scanT = {}, 0, 0.0 -- step 28
 	T20.pkDropW.untilT = 0.0
 	if T20.ik ~= nil then pcall(T20.ik.reset) end -- step 3: the IK copy dies with the pawn
 	-- test 20: no pickup state may survive into the new level (actors are gone)

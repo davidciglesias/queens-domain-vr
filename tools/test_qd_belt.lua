@@ -91,5 +91,20 @@ do -- step 21: model template name, model scale, highlighted slot
 	check("target grab", i == 3 and h == 1)
 end
 
+do -- step 39: previous / next slot weapon
+	local a, w2, c = {}, {}, {}
+	local p, n = b.neighbours({a, w2, c}, 3, c, 2)
+	check("neighbours wrap next", p == w2 and n == a)
+	p, n = b.neighbours({a, w2, c}, 3, a, 0)
+	check("neighbours wrap prev", p == c and n == w2)
+	p, n = b.neighbours({a, w2}, 2, a, 0)
+	check("two weapons: both sides the other", p == w2 and n == w2)
+	p, n = b.neighbours({a}, 1, a, 0)
+	check("one weapon: none", p == nil and n == nil)
+	p, n = b.neighbours({a, w2, c}, 3, {}, 1)
+	check("cur not in list: slot index", p == a and n == c)
+	p, n = b.neighbours({}, 0, a, 0)
+	check("empty list", p == nil and n == nil)
+end
 print(string.format("qd_belt: %d passed, %d failed", passed, failed))
 return failed
