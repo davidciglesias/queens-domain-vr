@@ -46,6 +46,8 @@ do -- step 38: region "past the shoulder" (head at 0,0,100 facing +X; right = +Y
 	check("hand at the belt out", not m.inZone(0, 25, 55, 0, 0, 100, 0, 1))
 	check("centre behind head out", not m.inZone(-15, 5, 100, 0, 0, 100, 0, 1))
 	check("left hand past left shoulder", m.inZone(-10, -25, 90, 0, 0, 100, 0, -1))
+	check("right hand reached across to left shoulder", m.inZone(-5, -15, 85, 0, 0, 100, 0, -1))
+	check("right hand at right shoulder not in left zone", not m.inZone(-10, 20, 90, 0, 0, 100, 0, -1))
 	check("left zone ignores the right side", not m.inZone(-10, 25, 90, 0, 0, 100, 0, -1))
 	check("yaw 90: right = -X", m.inZone(-25, -10, 95, 0, 0, 100, 90, 1) and not m.inZone(25, -10, 95, 0, 0, 100, 90, 1))
 end

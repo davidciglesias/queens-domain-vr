@@ -200,15 +200,20 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "crosshair_on_top", label = "Game crosshair drawn on top of scenery", initialValue = true },
 			{ widgetType = "checkbox", id = "weapon_fov_fix", label = "Undo the game's first-person weapon FOV squash (weapon drift/swim fix)", initialValue = true },
 			{ widgetType = "slider_float", id = "weapon_fpfov", label = "Weapon FOV value (0 = auto: game camera FOV, worked at 100; game uses 60)", initialValue = 0.0, range = {0.0, 160.0} },
+			{ widgetType = "checkbox", id = "weapon_depth_fix", label = "Held weapon at its true depth (walls and enemies can hide it; off = game draws it on top)", initialValue = true },
 			{ widgetType = "checkbox", id = "game_crosshair", label = "Game crosshair in 3D at knife aim point (hides the left-eye-only copy)", initialValue = true },
 			{ widgetType = "checkbox", id = "game_crosshair_gaze", label = "Game crosshair where you look when not knife-aiming", initialValue = true },
 			{ widgetType = "slider_float", id = "crosshair_size", label = "Game crosshair size", initialValue = 1.0, range = {0.2, 4.0} },
 			{ widgetType = "checkbox", id = "crosshair_bold", label = "Game crosshair: bold + dark outline", initialValue = true },
+			{ widgetType = "slider_float", id = "crosshair_brightness", label = "Game crosshair brightness", initialValue = 1.5, range = {1.0, 6.0} },
+			{ widgetType = "checkbox", id = "menu_world_sharp", label = "Keep the world sharp behind menus (game drops it to 1% resolution; turning off needs a game restart)", initialValue = true },
+			{ widgetType = "checkbox", id = "menu_black", label = "Black out the world behind menus", initialValue = false },
+			{ widgetType = "combo", id = "crosshair_color", label = "Game crosshair colour", selections = {"Game", "White", "Yellow", "Cyan", "Magenta", "Green"}, initialValue = 1, width = 150 },
 			-- test 20
 			{ widgetType = "checkbox", id = "pickup_assist", label = "Easy pickups: point left hand or crosshair at an item (beam shows it), grip or X grabs", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_take", label = "Grabbed item goes straight to the inventory (off = press A to take it)", initialValue = true },
 			{ widgetType = "checkbox", id = "pickup_auto_hold", label = "Items without a hand-tuned grip are held upright in the fist, shrunk to hand size", initialValue = true },
-			{ widgetType = "checkbox", id = "shoulder_switch", label = "Shoulder weapon switch: right grip at the right shoulder = next weapon, left grip at the left shoulder = previous", initialValue = true },
+			{ widgetType = "checkbox", id = "shoulder_switch", label = "Shoulder weapon switch: right hand + right grip past the right shoulder = next weapon, past the left shoulder = previous; left hand does the same for throwables", initialValue = true },
 			{ widgetType = "checkbox", id = "belt", label = "Consumable belt: owned items hang at your waist (look down); grip one, bring it to your mouth to use it", initialValue = true },
 			{ widgetType = "checkbox", id = "item_hud", label = "Selected-item HUD on the left hand (off: the belt card of the selected item gets a blue frame)", initialValue = false },
 			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 5, range = {1, 5} },
@@ -221,6 +226,16 @@ local configDefinition = {
 			{ widgetType = "slider_float", id = "pickup_range", label = "Pickup reach (m)", initialValue = 3.5, range = {1.0, 8.0} },
 			{ widgetType = "checkbox", id = "auto_grip", label = "Auto grip for weapons with no saved grip (computed from the weapon's shape)", initialValue = true },
 			{ widgetType = "checkbox", id = "knife_point_pose", label = "Left hand points while aiming throwing knives", initialValue = true },
+			-- step 37: knife charges as knives between the left fingers (libs/qd_knives.lua); sliders = per-knife offset from its finger bone
+			{ widgetType = "checkbox", id = "knife_fingers", label = "Throwing knives held between the left fingers (one per charge; replaces the flat knife counter; left hand stays open)", initialValue = true },
+			{ widgetType = "slider_float", id = "knife_fx", label = "Finger knives: X offset (cm, toward the next finger = minus)", initialValue = -1.3, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "knife_fy", label = "Finger knives: Y offset (cm, toward the fingertip = minus)", initialValue = 0.0, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "knife_fz", label = "Finger knives: Z offset (cm)", initialValue = 0.0, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "knife_fpitch", label = "Finger knives: pitch", initialValue = 90.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_fyaw", label = "Finger knives: yaw", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_froll", label = "Finger knives: roll", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_fscale", label = "Finger knives: size", initialValue = 0.7, range = {0.2, 3.0} },
+			{ widgetType = "slider_int", id = "knife_fbone", label = "Finger knives: finger joint (0 = knuckle, 2 = tip)", initialValue = 0, range = {0, 2} },
 			{ widgetType = "checkbox", id = "weapon_hand_hidden", label = "Hide the right hand model while holding a weapon", initialValue = true },
 			{ widgetType = "checkbox", id = "hit_haptics", label = "Weapon hand vibrates when a hit lands", initialValue = true },
 			-- test 9: usable-item HUD (ConsumableHUD) on the left hand, tweak live
@@ -351,8 +366,8 @@ pcall(function()
 		{ "=== Combat ===", { "6dof_right", "motion_swing_speed", "motion_swing_cooldown", "charge_on_swing", "still_release_cancel", "charge_haptics", "charge_glow", "hit_haptics", "motion_hit_window", "l2_native_dodge", "l2_stab_gesture" } },
 		{ "=== Movement ===", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge" } },
 		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "beam_on_x", "pickup_beam", "belt", "item_hud", "belt_slots", "belt_drop", "shoulder_switch" } },
-		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "ui_y_offset" } },
-		{ "=== Body ===", { "weapon_hand_hidden", "knife_point_pose", "ik_arms" } },
+		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "crosshair_brightness", "crosshair_color", "menu_black", "menu_world_sharp", "ui_y_offset" } },
+		{ "=== Body ===", { "weapon_hand_hidden", "knife_point_pose", "ik_arms", "knife_fingers", "knife_fx", "knife_fy", "knife_fz", "knife_fpitch", "knife_fyaw", "knife_froll", "knife_fscale", "knife_fbone" } },
 	}
 	local DROP = { verical_status_bar = true, plain_weapon_mat = true }
 	local DEV_TEXT = { ["--- Item HUD on left hand ---"] = true, ["--- HP HUD on left hand ---"] = true }
@@ -1968,12 +1983,15 @@ end
 -- test 16: the game's crosshair is drawn on the HUD canvas, which VR shows in the left eye only. Its material is
 -- UI-domain (can't go on a mesh), so: UMG Image with the same MID on a world WidgetComponent at the aim point
 -- (game keeps updating the MID: colour/interact state). Canvas copy hidden via BaseCrosshairSize = 0.
-local XHAIR_PX, XHAIR_RAD = 64, 0.06 -- widget render size (px); apparent width at size 1 (test 18: was 0.028, barely visible)
-local XHAIR_PAD = 6 -- px: bold mode draws the crosshair inset by this, a dark copy fills the whole widget behind it
+local XHAIR_PX, XHAIR_RAD = 128, 0.06 -- widget render size (px; xhair-contrast: 64 looked soft/aliased); apparent width at size 1 (test 18: was 0.028, barely visible)
+local XHAIR_PAD = 14 -- px of XHAIR_PX (was 6 of 64): bold mode draws the crosshair inset by this, a dark copy fills the whole widget behind it
 local XHAIR_HOSTS = { -- any game UserWidget class can host: its tree root is replaced by our Image
 	"WidgetBlueprintGeneratedClass /Game/UI/Widgets/UIAspectRatioBox.UIAspectRatioBox_C",
 	"WidgetBlueprintGeneratedClass /Game/UI/Widgets/Core/InputViewIcon.InputViewIcon_C",
 }
+-- xhair-contrast: crosshair_color tints the bright copies (1 = game colour), crosshair_brightness multiplies the whole
+-- widget in its material (HDR, above the tonemapper; the black outline stays black)
+local XHAIR_COLORS = { {1, 1, 1}, {1, 1, 1}, {1, 0.85, 0.1}, {0.1, 1, 1}, {1, 0.2, 1}, {0.2, 1, 0.2} }
 local xhair = {comp = nil, img = nil, mid = nil, visible = false, retryT = 0.0, hidT = 0.0, base = nil, logged = false}
 local xhairScale = {X = 1, Y = 1, Z = 1}
 local xhairRot = {Pitch = 0, Yaw = 0, Roll = 0}
@@ -2016,6 +2034,19 @@ local function xhairEnsure(hud)
 			for _, im in ipairs(xhair.extras) do pcall(function() im:SetVisibility(bold and 0 or 1) end) end
 			pcall(function() xhair.slot:SetPadding(bold and xhair.padOn or xhair.padOff) end)
 		end
+		local br = configui.getValue("crosshair_brightness") or 1.5
+		local col = configui.getValue("crosshair_color") or 1
+		if br ~= xhair.br or col ~= xhair.col then -- on change only (allocates)
+			xhair.br, xhair.col = br, col
+			local c = XHAIR_COLORS[col] or XHAIR_COLORS[1]
+			local ok, err = pcall(function()
+				xhair.comp:SetTintColorAndOpacity({R = br, G = br, B = br, A = 1.0})
+				local tint = {R = c[1], G = c[2], B = c[3], A = 1.0}
+				xhair.img:SetColorAndOpacity(tint)
+				if xhair.img2 ~= nil then xhair.img2:SetColorAndOpacity(tint) end
+			end)
+			uevr.params.functions.log_info(string.format("[XHAIR] brightness=%.2f colour=%d ok=%s %s", br, col, tostring(ok), ok and "" or tostring(err)))
+		end
 		-- test 19: draw on top of scenery = bDisableDepthTest on the engine's widget base material (shared by all
 		-- translucent widget components; the hand HUDs use the masked variant, where it has no effect)
 		local top = configui.getValue("crosshair_on_top") ~= false
@@ -2051,6 +2082,7 @@ function xhairCreate(hud)
 	xhair.mid = hud.Crosshairmat
 	img:SetBrushFromMaterial(xhair.mid)
 	xhair.imgs, xhair.extras, xhair.slot, xhair.bold = {img}, nil, nil, nil
+	xhair.br, xhair.col, xhair.img2 = nil, nil, nil -- re-apply brightness/colour to the new component
 	-- test 18: bold mode = Overlay root: dark copy (tinted black, full size) behind, crosshair inset by XHAIR_PAD on top,
 	-- drawn twice (stacking raises the half-transparent crosshair's opacity). Falls back to the single Image.
 	local root = img
@@ -2058,20 +2090,28 @@ function xhairCreate(hud)
 		local ov = uevrUtils.spawn_object("Class /Script/UMG.Overlay", widget.WidgetTree)
 		local shadow = uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
 		local img2 = uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
-		if ov == nil or shadow == nil or img2 == nil then error("spawn failed") end
+		-- xhair-contrast: the crosshair is a hollow rhombus: second dark copy inset 2x PAD = dark edge inside the stroke too
+		local shadowIn = uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
+		if ov == nil or shadow == nil or img2 == nil or shadowIn == nil then error("spawn failed") end
 		shadow:SetBrushFromMaterial(xhair.mid)
-		shadow:SetColorAndOpacity({R = 0.0, G = 0.0, B = 0.0, A = 0.85})
+		shadow:SetColorAndOpacity({R = 0.0, G = 0.0, B = 0.0, A = 1.0})
+		shadowIn:SetBrushFromMaterial(xhair.mid)
+		shadowIn:SetColorAndOpacity({R = 0.0, G = 0.0, B = 0.0, A = 1.0})
 		img2:SetBrushFromMaterial(xhair.mid)
 		local sS = ov:AddChildToOverlay(shadow)
+		local sI = ov:AddChildToOverlay(shadowIn)
 		local s1 = ov:AddChildToOverlay(img)
 		local s2 = ov:AddChildToOverlay(img2)
 		xhair.padOn = {Left = XHAIR_PAD, Top = XHAIR_PAD, Right = XHAIR_PAD, Bottom = XHAIR_PAD}
 		xhair.padOff = {Left = 0, Top = 0, Right = 0, Bottom = 0}
-		for _, sl in ipairs({sS, s1, s2}) do sl:SetHorizontalAlignment(0) sl:SetVerticalAlignment(0) end -- Fill
+		for _, sl in ipairs({sS, sI, s1, s2}) do sl:SetHorizontalAlignment(0) sl:SetVerticalAlignment(0) end -- Fill
 		s1:SetPadding(xhair.padOn)
 		s2:SetPadding(xhair.padOn)
-		xhair.imgs = {img, shadow, img2}
-		xhair.extras = {shadow, img2}
+		local p2 = 2 * XHAIR_PAD
+		sI:SetPadding({Left = p2, Top = p2, Right = p2, Bottom = p2})
+		xhair.imgs = {img, shadow, img2, shadowIn}
+		xhair.extras = {shadow, img2, shadowIn}
+		xhair.img2 = img2
 		xhair.slot = s1 -- img2 keeps its padding: only visible in bold mode
 		root = ov
 	end)
@@ -2509,6 +2549,140 @@ function applyPlainWeaponMaterial()
 	end)
 end
 
+-- step 44: held weapon drawn on top of everything. The equipment master materials have a scalar "Scale In Depth"
+-- (0.1): the weapon is squashed to 10 % of its depth toward the camera so it never clips into walls on a flat screen;
+-- per eye that keeps the picture but the depth buffer says "25 cm away" -> visible through walls/enemies. 1.0 on the
+-- weapon's MIDs = true depth (verified Test 55). Only the game's own weapon mesh is affected (hand/knife copies with
+-- the same parameter value are not). Checked on weapon change and 1/s; off = the remembered value is put back.
+T20.fpd = {P = "Scale In Depth", last = nil, was = {}, any = false, logs = 0, midC = nil, micC = nil, none = nil}
+function T20.fpdMesh(m, on)
+	local f = T20.fpd
+	if m == nil or uevrUtils.getValid(m) == nil then return end
+	if f.midC == nil then f.midC = uevr.api:find_uobject("Class /Script/Engine.MaterialInstanceDynamic") end
+	if f.micC == nil then f.micC = uevr.api:find_uobject("Class /Script/Engine.MaterialInstanceConstant") end
+	if f.midC == nil or f.micC == nil then return end
+	for i = 0, m:GetNumMaterials() - 1 do
+		local mat = m:GetMaterial(i)
+		if mat ~= nil then
+			local isMid = mat:is_a(f.midC)
+			if on then
+				if not isMid and mat:is_a(f.micC) then -- constant instance: needs a dynamic one on the component first
+					f.none = f.none or uevrUtils.fname_from_string("None")
+					mat = m:CreateDynamicMaterialInstance(i, mat, f.none)
+					isMid = mat ~= nil
+				end
+				if isMid then
+					local v = mat:K2_GetScalarParameterValue(f.P)
+					if type(v) == "number" and v > 0.0 and v < 0.999 then
+						f.was[mat:get_full_name()] = v
+						f.any = true
+						mat:SetScalarParameterValue(f.P, 1.0)
+						if f.logs < 12 then
+							f.logs = f.logs + 1
+							uevr.params.functions.log_info(string.format("[FPDEPTH] %s mat %d: %s %.2f -> 1.0", m:get_fname():to_string(), i, f.P, v))
+						end
+					end
+				end
+			elseif isMid and f.any then
+				local key = mat:get_full_name()
+				if f.was[key] ~= nil then
+					mat:SetScalarParameterValue(f.P, f.was[key])
+					f.was[key] = nil
+				end
+			end
+		end
+	end
+end
+-- menu-sharp (Test 58): menus with a 3D preview (item menu etc.) make the game's native render-world code write
+-- r.ScreenPercentage 1 every frame (hidden behind the menu on a monitor; in VR the whole world turns into huge moving
+-- pixels). Fix: whenever the cvar drops below 20, a console-priority write of the user's own ResScale (read every 2 s
+-- from the game's settings). Off only takes effect after a game restart.
+T20.sp = {nextT = 0, retryT = 0, rs = 100, cmd = "r.ScreenPercentage 100", ksl = nil, var = nil, fixes = 0}
+function T20.spExec(f)
+	if f.ksl == nil then f.ksl = uevrUtils.find_default_instance("Class /Script/Engine.KismetSystemLibrary") end
+	local pc = api:get_player_controller(0)
+	if f.ksl == nil or pc == nil then return false end
+	f.ksl:ExecuteConsoleCommand(uevrUtils.get_world(), f.cmd, pc)
+	return true
+end
+function T20.spTick()
+	local f = T20.sp
+	if configui.getValue("menu_world_sharp") == false then return end
+	local now = os.clock()
+	if now >= f.nextT then -- 1/2 s: follow the game's own resolution-scale setting
+		f.nextT = now + 2.0
+		local gi = uevr.api:get_engine().GameInstance
+		local ss = gi ~= nil and gi.ActiveSystemSave or nil
+		local rs = ss ~= nil and ss.ResScale or nil
+		if type(rs) ~= "number" or rs < 20 or rs > 400 then rs = 100 end
+		rs = math.floor(rs + 0.5)
+		if rs ~= f.rs then f.rs = rs f.cmd = string.format("r.ScreenPercentage %d", rs) end
+		if f.var == nil then f.var = uevr.api:get_console_manager():find_variable("r.ScreenPercentage") end
+	end
+	-- every frame (one cvar read): opening a menu writes 1 at console priority once, then lower-priority writes every
+	-- frame; one console write of ours after that sticks until the next menu open (verified live, Test 58)
+	local v = f.var ~= nil and f.var:get_float() or nil
+	if v ~= nil and v < 20 and now >= f.retryT then
+		f.retryT = now + 0.25
+		if T20.spExec(f) then
+			f.fixes = f.fixes + 1
+			if f.fixes <= 10 then uevr.params.functions.log_info(string.format("[MENUSP] game set r.ScreenPercentage %.0f -> %s (fix %d)", v, f.cmd, f.fixes)) end
+		end
+	end
+end
+-- menu_black: while a save/shop/inventory menu is open, fade the 3D world to black with the camera manager's manual
+-- fade (scene only; the menu is a separate UI layer). Re-applied every 0.5 s in case the game runs its own fade.
+T20.mb = {on = false, t = 0, black = {R = 0, G = 0, B = 0, A = 1}, logged = false}
+function T20.mbTick(inMenu)
+	local f = T20.mb
+	local want = inMenu and configui.getValue("menu_black") ~= false
+	if not want and not f.on then return end
+	local pc = api:get_player_controller(0)
+	local pcm = pc ~= nil and pc.PlayerCameraManager or nil
+	if pcm == nil then return end
+	local now = os.clock()
+	if want then
+		if f.on and now < f.t then return end
+		f.t = now + 0.5
+		pcm:SetManualCameraFade(1.0, f.black, false)
+		if not f.on and not f.logged then f.logged = true uevr.params.functions.log_info("[MENUBLACK] world faded to black behind menu") end
+		f.on = true
+	else
+		pcm:StopCameraFade()
+		f.on = false
+	end
+end
+-- s44b: also the other mesh parts of the visuals actor (139/388 weapons have several, e.g. gem components that stayed
+-- at 0.1; GetMeshes returns none) and the game's left knife model. Only on change / 1 s (allocates the component list).
+function T20.fpdExtra(on)
+	local f = T20.fpd
+	local pawn = api:get_local_pawn(0)
+	local w = pawn ~= nil and pawn.CurrentInHandWeapon or nil
+	local v = w ~= nil and w.CurrentVisuals or nil
+	if v ~= nil then
+		if f.meshC == nil then f.meshC = uevr.api:find_uobject("Class /Script/Engine.MeshComponent") end
+		local comps = nil
+		if f.meshC ~= nil then pcall(function() comps = v:K2_GetComponentsByClass(f.meshC) end) end
+		if comps ~= nil then
+			for i = 1, #comps do pcall(T20.fpdMesh, comps[i], on) end
+		end
+	end
+	if activeLeftWeaponMesh ~= nil then pcall(T20.fpdMesh, activeLeftWeaponMesh, on) end
+end
+function T20.fpdTick(force)
+	local f = T20.fpd
+	local m = activeWeaponMesh
+	if not force and m == f.last and activeLeftWeaponMesh == f.lastL then return end
+	f.last = m
+	f.lastL = activeLeftWeaponMesh
+	local on = configui.getValue("weapon_depth_fix") ~= false
+	if not on and not f.any then return end
+	if configui.getValue("plain_weapon_mat") == true then return end -- plain engine material: nothing to fix
+	T20.fpdMesh(m, on)
+	T20.fpdExtra(on)
+	if not on then f.any = next(f.was) ~= nil end
+end
+
 -- test 17: weapon sway fix. Equipment materials squash the held weapon toward the camera to fake a 60 deg viewmodel
 -- FOV (Game_MPC scalar "FPFOV", rewritten natively every tick; camera FOV is 100, headset per-eye ~110). FPFOV = camera
 -- FOV (100) verified to remove it (per-eye 110 did not). Must be written after the game tick, before rendering, so it
@@ -2830,7 +3004,7 @@ function applyNormalModeSettings(delta)
 	pcall(applyItemHudTransform, delta)
 	pcall(applyCompassOffset, delta)
 	plainMatT = (plainMatT or 0) + (delta or 0)
-	if plainMatT > 1 then plainMatT = 0 applyPlainWeaponMaterial() end
+	if plainMatT > 1 then plainMatT = 0 applyPlainWeaponMaterial() pcall(T20.fpdTick, true) else pcall(T20.fpdTick, false) end
 	pcall(hmdFollowDiag, delta)
 	pcall(hmdPosDiag, delta)
 	pcall(updateKnifeModelVisibility)
@@ -2850,14 +3024,17 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	pcall(applyLateUpdate, delta)
 	local aimOk, aimErr = pcall(updateAimDot) -- hides itself when showLaser is false (menus/cutscenes clear it)
 	if not aimOk and aimErr ~= lastAimErr then lastAimErr = aimErr uevr.params.functions.log_info("[XHAIR] updateAimDot error: " .. tostring(aimErr)) end
+	pcall(T20.spTick) -- every tick incl. menus (the 3D-preview menus are where the game drops the cvar)
 	regularPlayLast = false
 	T20.ikPlay = false
+	local menuNow = false
 	if isMainMenu() then
 		applyMainMenuSettings()
 	elseif isInCutScene() then
 		applyCinematicSettings()
 	elseif isInSaveMenu() or isInShopMenu() or isInInventoryMenu() then
 		applyMenuSettings()
+		menuNow = true
 	else ---regular play
 		regularPlayLast = not uevrUtils.isGamePaused()
 		T20.ikPlay = true
@@ -2866,6 +3043,7 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 		end
 		applyNormalModeSettings(delta)
 	end
+	pcall(T20.mbTick, menuNow)
 	-- test 21: consumable belt (libs/qd_belt.lua), regular unpaused play only
 	if T20.belt ~= nil then
 		local okB, errB = pcall(regularPlayLast and T20.belt.tick or T20.belt.hideAll, delta)
@@ -2873,6 +3051,11 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	end
 	if T20.shoulder ~= nil then
 		if regularPlayLast then pcall(T20.shoulder.tick, delta) else T20.shoulder.reset() end
+	end
+	-- step 37: finger knives (libs/qd_knives.lua), regular unpaused play with motion controls only
+	if T20.knives ~= nil then
+		local okK, errK = pcall(T20.knives.tick, delta, regularPlayLast == true and configui.getValue("6dof_right") == true)
+		if not okK and not T20.knivesErr then T20.knivesErr = true uevr.params.functions.log_info("[KNIFE] error: " .. tostring(errK)) end
 	end
 	-- step 3: IK arms: only with the option and motion controls on; hidden outside regular play
 	if T20.ik ~= nil then
@@ -2891,11 +3074,15 @@ function on_xinput_get_state(retval, user_index, state)
 		-- step 36: knife aim -> left hand points (the lib curls the index on left trigger, the rest on left grip): fake
 		-- grip held + trigger released for the hand animation only, then restore what the game gets
 		local g = state.Gamepad
-		local fake = showLaser == true and configui.getValue("knife_point_pose") ~= false
+		-- step 42 (headset 2026-11-15b): with finger knives the left hand stays open (no point, no fist) unless it holds an item
+		local bs = T20.belt ~= nil and T20.belt.S or nil
+		local open = configui.getValue("knife_fingers") == true and not pickableHeld and not (bs ~= nil and bs.grab ~= nil and bs.grab.hand == 1)
+		local fake = not open and showLaser == true and configui.getValue("knife_point_pose") ~= false
 		local b0, t0 = g.wButtons, g.bLeftTrigger
-		if fake then g.wButtons = b0 | XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0 end
+		if open then g.wButtons = b0 & ~XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0
+		elseif fake then g.wButtons = b0 | XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0 end
 		local okH, errH = pcall(hands.handleInput, state, isHoldingWeapon, hand)
-		if fake then g.wButtons, g.bLeftTrigger = b0, t0 end
+		if open or fake then g.wButtons, g.bLeftTrigger = b0, t0 end
 		if not okH and not T20.handErr then T20.handErr = true uevr.params.functions.log_info("[HANDS] handleInput error: " .. tostring(errH)) end
 		
 		-- test 21: second call removed. The offHHand typo (nil -> Handed.Right) made it drive the RIGHT hand as empty-handed,
@@ -3137,9 +3324,20 @@ pcall(function()
 	T20.shoulder.init({uevrUtils = uevrUtils, controllers = controllers, configui = configui, log = function(m) uevr.params.functions.log_info(m) end})
 	QD.shoulder = T20.shoulder
 end)
+-- step 37: knife charges as knives between the left fingers
+pcall(function()
+	T20.knives = require("libs/qd_knives")
+	T20.knives.init({uevrUtils = uevrUtils, configui = configui, hands = hands, api = api, hr = reusable_hit_result,
+		log = function(m) uevr.params.functions.log_info(m) end})
+	QD.knives = T20.knives
+end)
 -- step 3: IK arms. require only works while the script loads, so the IK lib (and its side modules) is loaded only when the
 -- option is already on: off = nothing new runs and pawn.Arms stays hidden as before.
 if configui.getValue("ik_arms") == true then
+	-- step 27: libs/ik pulls in uevrlib libs/input, whose own ticks drive body/root yaw (default pawnRotationMode = right
+	-- controller) and fight UEVR left-hand aim: root yaw lags control yaw by the head yaw -> endless spin (Test 51 A/B).
+	-- Our rig uses parent_type 2 (HMD) and places the mesh itself, so keep that module disabled. Its setDisabled param
+	-- does not stick; the is_input_disabled callback does.
 	T20.ikOk, T20.ikLoadErr = pcall(function()
 		T20.ik = require("libs/qd_ik")
 		T20.ik.init({ik = require("libs/ik"), uevrUtils = uevrUtils, controllers = controllers, hands = hands, hr = reusable_hit_result,
@@ -3147,8 +3345,20 @@ if configui.getValue("ik_arms") == true then
 		QD.ik = T20.ik
 	end)
 	if not T20.ikOk then T20.ik = nil uevr.params.functions.log_info("[IK] load error: " .. tostring(T20.ikLoadErr)) end
+	T20.ikInputOk, T20.ikInputErr = pcall(function()
+		local inp = package.loaded["libs/input"]
+		inp.registerIsDisabledCallback(function() return true, 100 end)
+	end)
+	uevr.params.functions.log_info("[IK] input lib off: " .. tostring(T20.ikInputOk) .. " " .. tostring(T20.ikInputErr or ""))
 end
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
+	if inputIndex == nil and state ~= nil then -- step 45: lock here too; a swallowed lone left grip left nothing for the main callback to lock on
+		local g = state.Gamepad
+		if g.wButtons ~= 0 or g.bRightTrigger > 30 or g.bLeftTrigger > 30 or math.abs(g.sThumbLX) > 8000 or math.abs(g.sThumbLY) > 8000 then
+			inputIndex = user_index
+			pcall(function() uevr.params.functions.log_info("[INPUT] locked user_index=" .. tostring(user_index) .. " (early)") end)
+		end
+	end
 	if inputIndex ~= nil and user_index ~= inputIndex then return end -- skip the 2nd, all-zero call (see main callback)
 	if T20.shoulder ~= nil then pcall(T20.shoulder.onXInput, state) end
 	if T20.belt ~= nil then pcall(T20.belt.onXInput, state) end
@@ -4735,7 +4945,8 @@ function on_level_change(level)
 	--uevrUtils.updateDeferral("populateCurrentLevelPickables")
     --currentAreaMusic = getCurrentAreaMusic()
 	lastTouchedSaveArea = nil
-	if T20.belt ~= nil then pcall(T20.belt.reset) end -- test 21: belt cards die with the level
+	if T20.belt ~= nil then pcall(T20.belt.reset) end
+	if T20.knives ~= nil then pcall(T20.knives.reset) end -- step 37 -- test 21: belt cards die with the level
 	T20.pkDrops = {} -- step 19
 	T20.pkBrk.list, T20.pkBrk.n, T20.pkBrk.scanT = {}, 0, 0.0 -- step 28
 	T20.pkDropW.untilT = 0.0
