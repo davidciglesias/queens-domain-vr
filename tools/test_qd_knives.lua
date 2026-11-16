@@ -7,7 +7,7 @@ do -- visible count
 	check("nil -> 0", m.visibleCount(nil) == 0)
 	check("neg -> 0", m.visibleCount(-2) == 0)
 	check("2 -> 2", m.visibleCount(2) == 2)
-	check("cap 4", m.visibleCount(9) == 4)
+	check("cap 5", m.visibleCount(9) == 5)
 	check("cap custom", m.visibleCount(9, 3) == 3)
 	check("float floors", m.visibleCount(2.7) == 2)
 end
@@ -17,7 +17,8 @@ do -- bones
 	check("seg clamp hi", m.boneName(2, 7) == "Finger_Middle_2_L")
 	check("seg clamp lo", m.boneName(3, -1) == "Finger_Ring_0_L")
 	check("seg nil", m.boneName(1, nil) == "Finger_Index_0_L")
-	check("i out of range", m.boneName(5, 0) == nil)
+	check("5th = index (thumb side)", m.boneName(5, 0) == "Finger_Index_0_L" and m.SIDE[5] == -1)
+	check("i out of range", m.boneName(6, 0) == nil)
 end
 do -- tuning
 	local vals = { knife_fx = 2.5, knife_fscale = 1.5, knife_fbone = 1, knife_fy = "bad" }

@@ -106,5 +106,46 @@ do -- step 39: previous / next slot weapon
 	p, n = b.neighbours({}, 0, a, 0)
 	check("empty list", p == nil and n == nil)
 end
+do -- step 46: lower card row + sorted insert
+	local f1, l1 = b.wcardPos(1)
+	local f2, l2 = b.wcardPos(2)
+	local f3, l3 = b.wcardPos(3)
+	local f4, l4 = b.wcardPos(4)
+	check("row order left to right: t prev, t next, w prev, w next", l3 < l4 and l4 < 0 and 0 < l1 and l1 < l2)
+	check("row symmetric", l1 == -l4 and l2 == -l3 and f1 == f4 and f2 == f3)
+	check("cards don't overlap", (l2 - l1) >= b.CARD_CM and (l1 - l4) >= b.CARD_CM)
+	local L, K, n = {}, {}, 0
+	n = b.sortedInsert(L, K, n, "c", 1002)
+	n = b.sortedInsert(L, K, n, "a", 1000)
+	n = b.sortedInsert(L, K, n, "b", 1001)
+	check("sortedInsert orders by id", n == 3 and L[1] == "a" and L[2] == "b" and L[3] == "c")
+end
+do -- step 49: tier rank among same-model items by sort order
+	local keys = {"a", "h", "h", "b", "h"}
+	local sorts = {5, 1003, 1001, 7, 1002}
+	local r1, z1 = b.tierRank(keys, sorts, 5, 3)
+	local r2, z2 = b.tierRank(keys, sorts, 5, 5)
+	local r3, z3 = b.tierRank(keys, sorts, 5, 2)
+	check("tier lowest", r1 == 1 and z1 == 3)
+	check("tier mid", r2 == 2 and z2 == 3)
+	check("tier top", r3 == 3 and z3 == 3)
+	local r4, z4 = b.tierRank(keys, sorts, 5, 1)
+	check("single tier", r4 == 1 and z4 == 1)
+	local r5 = b.tierRank({"x", "x"}, {1, 1}, 2, 2)
+	check("equal sort: list order", r5 == 2)
+end
+do -- step 58: heal card
+	check("heal field tier 1", b.healField("item_heal_herb") == "HealingHerb1HealAmount")
+	check("heal field tier 3", b.healField("item_heal_potion_3") == "HealingPotion3HealAmount")
+	check("heal field other", b.healField("item_cure_poison") == nil and b.healField(nil) == nil)
+	check("heal field near miss", b.healField("item_healx") == nil)
+	-- herb 30/60/90, potion 50/100/200, one non-healing (false)
+	local am = {30, 60, 90, 50, 100, 200, false}
+	check("pick weakest", b.healPick(am, {true, true, true, true, true, true, true}, 7) == 1)
+	check("pick across families", b.healPick(am, {false, true, true, true, true, true, true}, 7) == 4)
+	check("pick next", b.healPick(am, {false, true, true, false, true, true, true}, 7) == 2)
+	check("pick none", b.healPick(am, {false, false, false, false, false, false, true}, 7) == nil)
+	check("pick tie keeps first", b.healPick({5, 5}, {true, true}, 2) == 1)
+end
 print(string.format("qd_belt: %d passed, %d failed", passed, failed))
 return failed

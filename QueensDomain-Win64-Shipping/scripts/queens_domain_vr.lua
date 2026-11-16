@@ -206,8 +206,14 @@ local configDefinition = {
 			{ widgetType = "slider_float", id = "crosshair_size", label = "Game crosshair size", initialValue = 1.0, range = {0.2, 4.0} },
 			{ widgetType = "checkbox", id = "crosshair_bold", label = "Game crosshair: bold + dark outline", initialValue = true },
 			{ widgetType = "slider_float", id = "crosshair_brightness", label = "Game crosshair brightness", initialValue = 1.5, range = {1.0, 6.0} },
+			{ widgetType = "checkbox", id = "world_detail", label = "Sharper world: override the game's texture detail and dither (the game's own options are locked)", initialValue = true },
+			{ widgetType = "slider_float", id = "world_mip_bias", label = "Sharper world: texture mip bias (game -0.5; lower = finer far textures, more shimmer)", initialValue = -1.5, range = {-4.0, 1.0} },
+			{ widgetType = "checkbox", id = "world_dither", label = "Sharper world: keep the game's dither pattern", initialValue = false },
 			{ widgetType = "checkbox", id = "menu_world_sharp", label = "Keep the world sharp behind menus (game drops it to 1% resolution; turning off needs a game restart)", initialValue = true },
 			{ widgetType = "checkbox", id = "menu_black", label = "Black out the world behind menus", initialValue = false },
+			{ widgetType = "checkbox", id = "aim_ranged_right", label = "Energy / shooting weapons aim with the right hand (second crosshair; throws still aim with the left)", initialValue = true },
+			{ widgetType = "checkbox", id = "aim_grip_right", label = "Right grip moves (weapon jumps etc.) aim with the right hand", initialValue = true },
+			{ widgetType = "combo", id = "crosshair_color_right", label = "Right-hand crosshair colour", selections = {"Game", "White", "Yellow", "Cyan", "Magenta", "Green"}, initialValue = 4, width = 150 },
 			{ widgetType = "combo", id = "crosshair_color", label = "Game crosshair colour", selections = {"Game", "White", "Yellow", "Cyan", "Magenta", "Green"}, initialValue = 1, width = 150 },
 			-- test 20
 			{ widgetType = "checkbox", id = "pickup_assist", label = "Easy pickups: point left hand or crosshair at an item (beam shows it), grip or X grabs", initialValue = true },
@@ -217,6 +223,7 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "belt", label = "Consumable belt: owned items hang at your waist (look down); grip one, bring it to your mouth to use it", initialValue = true },
 			{ widgetType = "checkbox", id = "item_hud", label = "Selected-item HUD on the left hand (off: the belt card of the selected item gets a blue frame)", initialValue = false },
 			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 5, range = {1, 5} },
+			{ widgetType = "checkbox", id = "belt_heal_card", label = "Belt heal card: the leftmost card is always your weakest healing item (lowest tier first); other healing tiers leave the belt", initialValue = true },
 			{ widgetType = "slider_float", id = "belt_drop", label = "Belt height: cm below your eyes", initialValue = 60.0, range = {30.0, 95.0} },
 			-- step 3: IK arms (libs/qd_ik.lua). The IK lib is only loaded when this is on at script load
 			{ widgetType = "checkbox", id = "ik_arms", label = "IK arms (experimental): arms follow your hands. Needs motion controls melee; turning it on needs a game restart", initialValue = false },
@@ -237,6 +244,7 @@ local configDefinition = {
 			{ widgetType = "slider_float", id = "knife_fscale", label = "Finger knives: size", initialValue = 0.7, range = {0.2, 3.0} },
 			{ widgetType = "slider_int", id = "knife_fbone", label = "Finger knives: finger joint (0 = knuckle, 2 = tip)", initialValue = 0, range = {0, 2} },
 			{ widgetType = "checkbox", id = "weapon_hand_hidden", label = "Hide the right hand model while holding a weapon", initialValue = true },
+			{ widgetType = "checkbox", id = "weapon_grip_pose", label = "Right hand makes a full fist around a held weapon", initialValue = true },
 			{ widgetType = "checkbox", id = "hit_haptics", label = "Weapon hand vibrates when a hit lands", initialValue = true },
 			-- test 9: usable-item HUD (ConsumableHUD) on the left hand, tweak live
 			{ widgetType = "text", label = "--- Item HUD on left hand ---" },
@@ -365,9 +373,9 @@ pcall(function()
 	local GROUPS = {
 		{ "=== Combat ===", { "6dof_right", "motion_swing_speed", "motion_swing_cooldown", "charge_on_swing", "still_release_cancel", "charge_haptics", "charge_glow", "hit_haptics", "motion_hit_window", "l2_native_dodge", "l2_stab_gesture" } },
 		{ "=== Movement ===", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge" } },
-		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "beam_on_x", "pickup_beam", "belt", "item_hud", "belt_slots", "belt_drop", "shoulder_switch" } },
-		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "crosshair_brightness", "crosshair_color", "menu_black", "menu_world_sharp", "ui_y_offset" } },
-		{ "=== Body ===", { "weapon_hand_hidden", "knife_point_pose", "ik_arms", "knife_fingers", "knife_fx", "knife_fy", "knife_fz", "knife_fpitch", "knife_fyaw", "knife_froll", "knife_fscale", "knife_fbone" } },
+		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "beam_on_x", "pickup_beam", "belt", "item_hud", "belt_slots", "belt_heal_card", "belt_drop", "shoulder_switch" } },
+		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "crosshair_brightness", "crosshair_color", "aim_ranged_right", "aim_grip_right", "crosshair_color_right", "menu_black", "menu_world_sharp", "world_detail", "world_mip_bias", "world_dither", "ui_y_offset" } },
+		{ "=== Body ===", { "weapon_hand_hidden", "weapon_grip_pose", "knife_point_pose", "ik_arms", "knife_fingers", "knife_fx", "knife_fy", "knife_fz", "knife_fpitch", "knife_fyaw", "knife_froll", "knife_fscale", "knife_fbone" } },
 	}
 	local DROP = { verical_status_bar = true, plain_weapon_mat = true }
 	local DEV_TEXT = { ["--- Item HUD on left hand ---"] = true, ["--- HP HUD on left hand ---"] = true }
@@ -1993,6 +2001,8 @@ local XHAIR_HOSTS = { -- any game UserWidget class can host: its tree root is re
 -- widget in its material (HDR, above the tonemapper; the black outline stays black)
 local XHAIR_COLORS = { {1, 1, 1}, {1, 1, 1}, {1, 0.85, 0.1}, {0.1, 1, 1}, {1, 0.2, 1}, {0.2, 1, 0.2} }
 local xhair = {comp = nil, img = nil, mid = nil, visible = false, retryT = 0.0, hidT = 0.0, base = nil, logged = false}
+-- step 54: second crosshair for right-hand ranged weapons; the xhair* functions use whichever table `xhair` holds
+T20.xhairR = {comp = nil, img = nil, mid = nil, visible = false, retryT = 0.0, hidT = 0.0, base = nil, logged = false, colOpt = "crosshair_color_right"}
 local xhairScale = {X = 1, Y = 1, Z = 1}
 local xhairRot = {Pitch = 0, Yaw = 0, Roll = 0}
 regularPlayLast = false -- set by the pre-tick branch (1 tick late)
@@ -2035,7 +2045,7 @@ local function xhairEnsure(hud)
 			pcall(function() xhair.slot:SetPadding(bold and xhair.padOn or xhair.padOff) end)
 		end
 		local br = configui.getValue("crosshair_brightness") or 1.5
-		local col = configui.getValue("crosshair_color") or 1
+		local col = configui.getValue(xhair.colOpt or "crosshair_color") or 1
 		if br ~= xhair.br or col ~= xhair.col then -- on change only (allocates)
 			xhair.br, xhair.col = br, col
 			local c = XHAIR_COLORS[col] or XHAIR_COLORS[1]
@@ -2149,10 +2159,11 @@ local function xhairPlace(hud, head, dist) -- at aimEnd, facing the head, consta
 		uevr.params.functions.log_info(string.format("[XHAIR] shown dist=%.0f scale=%.4f pickMult=%.2f", dist, s, mult))
 	end
 end
-function updateAimDot()
-	local knife = showLaser
+function T20.aimDotPass(right)
+	local knife = showLaser or right
 	local hud = xhairWanted() and xhairHud() or nil
-	if os.clock() > xhair.hidT then
+	if right and hud == nil then xhairHide() return end -- right hand: game crosshair only (no dot fallback)
+	if not right and os.clock() > xhair.hidT then
 		xhair.hidT = os.clock() + 1.0
 		local h = hud or xhairHud()
 		if h ~= nil then
@@ -2164,10 +2175,10 @@ function updateAimDot()
 	local gaze = hud ~= nil and not knife and regularPlayLast and configui.getValue("game_crosshair_gaze") ~= false
 	if not ((knife and (hud ~= nil or aimDotEnabled())) or gaze) then hideAimDot() xhairHide() return end
 	local head = controllers.getController(2)
-	local c = knife and controllers.getController(0, true) or head
+	local c = right and controllers.getController(1, true) or (knife and controllers.getController(0, true) or head)
 	if c == nil then hideAimDot() xhairHide() return end
 	local useX = hud ~= nil and xhairEnsure(hud)
-	if not useX and not (knife and aimDotEnabled()) then hideAimDot() xhairHide() return end
+	if not useX and (right or not (knife and aimDotEnabled())) then if not right then hideAimDot() end xhairHide() return end
 	if useX then hideAimDot() else xhairHide() end
 	if not useX and (aimDot == nil or uevrUtils.getValid(aimDot) == nil) then
 		aimDot = uevrUtils.createStaticMeshComponent("StaticMesh /Engine/BasicShapes/Sphere.Sphere", {visible=true, collisionEnabled=false})
@@ -2217,7 +2228,7 @@ function updateAimDot()
 		end
 	end
 	-- test 20: a pickup target (pickup_assist) pulls the crosshair onto the item
-	if pickupSnap ~= nil then
+	if pickupSnap ~= nil and not right then
 		aimEnd.X, aimEnd.Y, aimEnd.Z = pickupSnap.X, pickupSnap.Y, pickupSnap.Z
 		hit = true
 	end
@@ -2244,6 +2255,22 @@ function updateAimDot()
 	if not aimDotLogged then
 		aimDotLogged = true
 		uevr.params.functions.log_info(string.format("[AIM] dot shown hit=%s dist=%.0f scale=%.3f", tostring(hit), dist, s))
+	end
+end
+
+-- step 54: left (knives) / gaze crosshair, then the right-hand one while a right-hand ranged weapon is held
+function updateAimDot()
+	T20.aimDotPass(false)
+	local keep = xhair
+	if T20.rrOn == true and regularPlayLast then
+		xhair = T20.xhairR
+		local ok, err = pcall(T20.aimDotPass, true)
+		xhair = keep
+		if not ok then error(err) end
+	elseif T20.xhairR.visible then
+		xhair = T20.xhairR
+		pcall(xhairHide)
+		xhair = keep
 	end
 end
 
@@ -2630,6 +2657,48 @@ function T20.spTick()
 		end
 	end
 end
+-- step 51 (world_detail): the game's graphics options for texture mip offset / dither can't be changed in its menu.
+-- Mip offset = cvar r.MipMapLODBias (game -0.5); dither = PixelFilter_MPC scalar EnableDither (1; DitherStrength 64).
+-- Checked 1/s and re-applied when different (console write for the cvar); off puts back the values seen first.
+T20.wd = {t = 0, var = nil, mpc = nil, kml = nil, gameBias = nil, gameDither = nil, applied = false, cmd = nil, logged = 0}
+function T20.wdTick()
+	local f = T20.wd
+	local now = os.clock()
+	if now < f.t then return end
+	f.t = now + 1.0
+	local on = configui.getValue("world_detail") ~= false
+	if not on and not f.applied then return end
+	local pawn = api:get_local_pawn(0)
+	if pawn == nil then return end
+	if f.var == nil then f.var = uevr.api:get_console_manager():find_variable("r.MipMapLODBias") end
+	if f.kml == nil then f.kml = uevrUtils.find_default_instance("Class /Script/Engine.KismetMaterialLibrary") end
+	if f.mpc == nil then f.mpc = uevr.api:find_uobject("MaterialParameterCollection /Game/BaseMaterials/Resources/PixelFilter_MPC.PixelFilter_MPC") end
+	if f.fnDither == nil then f.fnDither = uevrUtils.fname_from_string("EnableDither") end
+	local bias = f.var ~= nil and f.var:get_float() or nil
+	local dith = nil
+	if f.kml ~= nil and f.mpc ~= nil then dith = f.kml:GetScalarParameterValue(pawn, f.mpc, f.fnDither) end
+	if f.gameBias == nil and bias ~= nil then f.gameBias = bias end
+	if f.gameDither == nil and type(dith) == "number" then f.gameDither = dith end
+	local wantBias, wantDither
+	if on then
+		wantBias = configui.getValue("world_mip_bias") or -1.5
+		wantDither = configui.getValue("world_dither") == true and (f.gameDither or 1.0) or 0.0
+	else
+		wantBias, wantDither = f.gameBias, f.gameDither
+	end
+	if bias ~= nil and wantBias ~= nil and math.abs(bias - wantBias) > 0.01 then
+		f.cmd = string.format("r.MipMapLODBias %.2f", wantBias)
+		local ksl = uevrUtils.find_default_instance("Class /Script/Engine.KismetSystemLibrary")
+		local pc = api:get_player_controller(0)
+		if ksl ~= nil and pc ~= nil then ksl:ExecuteConsoleCommand(uevrUtils.get_world(), f.cmd, pc) end
+		if f.logged < 10 then f.logged = f.logged + 1 uevr.params.functions.log_info(string.format("[WDETAIL] mip bias %.2f -> %.2f", bias, wantBias)) end
+	end
+	if type(dith) == "number" and wantDither ~= nil and math.abs(dith - wantDither) > 0.01 then
+		f.kml:SetScalarParameterValue(pawn, f.mpc, f.fnDither, wantDither)
+		if f.logged < 10 then f.logged = f.logged + 1 uevr.params.functions.log_info(string.format("[WDETAIL] dither %.0f -> %.0f", dith, wantDither)) end
+	end
+	f.applied = on
+end
 -- menu_black: while a save/shop/inventory menu is open, fade the 3D world to black with the camera manager's manual
 -- fade (scene only; the menu is a separate UI layer). Re-applied every 0.5 s in case the game runs its own fade.
 T20.mb = {on = false, t = 0, black = {R = 0, G = 0, B = 0, A = 1}, logged = false}
@@ -2864,6 +2933,64 @@ function T20.cleanupStale()
 	uevr.params.functions.log_info(string.format("[CLEANUP] stale helper meshes destroyed=%d of %d ok=%s %s", n, seen, tostring(ok), ok and "" or tostring(err)))
 end
 
+-- step 54 (headset 2026-11-15d): energy / shooting weapons in the right hand cast where the LEFT hand aims (UEVR
+-- left-controller aim for the knives). Ranged = the held weapon's item has "Consumes Battery" (12 of 107 weapons:
+-- the guns and energy casters, live 2026-11-16). T20.rrOn drives the aim method, the right crosshair and the throw delay.
+T20.rrT = 0
+function T20.rrTick(delta)
+	T20.rrT = T20.rrT - (delta or 0)
+	if T20.rrT > 0 then return end
+	T20.rrT = 0.5
+	local on = false
+	if configui.getValue("aim_ranged_right") ~= false then
+		local pawn = api:get_local_pawn(0)
+		local w = pawn ~= nil and pawn.CurrentInHandWeapon or nil
+		local it = w ~= nil and w.ItemData or nil
+		if it ~= nil then on = it["Consumes Battery"] == true end
+	end
+	if on ~= T20.rrOn then
+		T20.rrOn = on
+		uevr.params.functions.log_info("[RANGED] right-hand ranged weapon: " .. tostring(on))
+	end
+end
+T20.RR_THROW_S = 0.9   -- left aim kept this long after a left grip press
+T20.RR_LB_DELAY = 0.06 -- the press reaches the game this much later (aim method switched first)
+-- step 57: right grip (RB) moves of melee weapons (e.g. a weapon jump) aim with the right hand: right controller aim from
+-- the press until RG_AIM_S after it / RG_HOLD_S after release; the press reaches the game RR_LB_DELAY later (aim switched first).
+-- RB here already excludes grips swallowed by the shoulder switch / belt (early callbacks above).
+T20.RG_AIM_S = 0.9
+T20.RG_HOLD_S = 0.3
+function T20.rgXInput(g, now)
+	local rb = (g.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
+	local prev = T20.rgPrev
+	T20.rgPrev = rb
+	if T20.rrOn == true or configui.getValue("aim_grip_right") == false then return end
+	if rb and not prev then
+		T20.rgAimT = now + T20.RG_AIM_S
+		T20.rgUntil = now + T20.RR_LB_DELAY
+		pcall(function() vr.set_mod_value("VR_AimMethod", "2") end)
+		uevr.params.functions.log_info("[GRIPAIM] right grip -> right-hand aim")
+	end
+	if rb then
+		if (T20.rgAimT or 0) < now + T20.RG_HOLD_S then T20.rgAimT = now + T20.RG_HOLD_S end
+		if now < (T20.rgUntil or 0) then g.wButtons = g.wButtons & ~XINPUT_GAMEPAD_RIGHT_SHOULDER end
+	end
+end
+function T20.rrXInput(state)
+	local g = state.Gamepad
+	local now = os.clock()
+	pcall(T20.rgXInput, g, now)
+	if T20.rrOn ~= true then T20.rrLbPrev = false return end
+	local lb = (g.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+	if lb and not T20.rrLbPrev then
+		T20.rrThrowT = now + T20.RR_THROW_S
+		T20.rrLbUntil = now + T20.RR_LB_DELAY
+		pcall(function() vr.set_mod_value("VR_AimMethod", "3") end)
+	end
+	T20.rrLbPrev = lb
+	if lb and now < (T20.rrLbUntil or 0) then g.wButtons = g.wButtons & ~XINPUT_GAMEPAD_LEFT_SHOULDER end
+end
+
 function applyNormalModeSettings(delta)
 	if not T20.cleaned then if T20.reloaded then T20.cleanupStale() else T20.cleaned = true end end
 		
@@ -2879,8 +3006,15 @@ function applyNormalModeSettings(delta)
 		nativeDodgeAimLeft = nativeDodgeAimLeft - (delta or 0)
 		if nativeDodgeAimLeft <= 0 then pcall(restoreDodgeFacing) end
 	end
+	pcall(T20.rrTick, delta)
+	-- step 54: right-hand ranged weapon -> right controller aims (2), except just after a left grip (throw window)
+	local rrAim = T20.rrOn == true and os.clock() >= (T20.rrThrowT or 0)
+	if os.clock() < (T20.rgAimT or 0) then rrAim = true end -- step 57: right grip move window
 	if nativeDodgeAimLeft > 0 then
 		vr.set_mod_value("VR_AimMethod", "1") -- test 9: HMD aim while the native dodge plays
+	elseif rrAim then
+		vr.set_mod_value("VR_AimMethod", "2")
+		if showLaser and currentCompass ~= nil and not aimDotEnabled() then currentCompassWidgetComponent:SetVisibility(false, true) end
 	elseif showLaser then
 		vr.set_mod_value("VR_AimMethod", "3")
 		if currentCompass ~= nil and not aimDotEnabled() then -- test 7: compass hidden only when the visible laser is on
@@ -3024,6 +3158,7 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	pcall(applyLateUpdate, delta)
 	local aimOk, aimErr = pcall(updateAimDot) -- hides itself when showLaser is false (menus/cutscenes clear it)
 	if not aimOk and aimErr ~= lastAimErr then lastAimErr = aimErr uevr.params.functions.log_info("[XHAIR] updateAimDot error: " .. tostring(aimErr)) end
+	do local okW, errW = pcall(T20.wdTick) if not okW and not T20.wdErr then T20.wdErr = true uevr.params.functions.log_info("[WDETAIL] error: " .. tostring(errW)) end end
 	pcall(T20.spTick) -- every tick incl. menus (the 3D-preview menus are where the game drops the cvar)
 	regularPlayLast = false
 	T20.ikPlay = false
@@ -3078,11 +3213,15 @@ function on_xinput_get_state(retval, user_index, state)
 		local bs = T20.belt ~= nil and T20.belt.S or nil
 		local open = configui.getValue("knife_fingers") == true and not pickableHeld and not (bs ~= nil and bs.grab ~= nil and bs.grab.hand == 1)
 		local fake = not open and showLaser == true and configui.getValue("knife_point_pose") ~= false
-		local b0, t0 = g.wButtons, g.bLeftTrigger
+		local b0, t0, rt0 = g.wButtons, g.bLeftTrigger, g.bRightTrigger
 		if open then g.wButtons = b0 & ~XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0
 		elseif fake then g.wButtons = b0 | XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0 end
+		-- step 50 (headset 2026-11-15c): the weapon pose curls the index only on trigger and the rest only on grip, so a
+		-- held weapon looked pointed at -> grip + trigger fed to the hand animation only while a melee weapon is held
+		local fist = isHoldingWeapon and configui.getValue("weapon_grip_pose") ~= false
+		if fist then g.wButtons = g.wButtons | XINPUT_GAMEPAD_RIGHT_SHOULDER g.bRightTrigger = 255 end
 		local okH, errH = pcall(hands.handleInput, state, isHoldingWeapon, hand)
-		if open or fake then g.wButtons, g.bLeftTrigger = b0, t0 end
+		if open or fake or fist then g.wButtons, g.bLeftTrigger, g.bRightTrigger = b0, t0, rt0 end
 		if not okH and not T20.handErr then T20.handErr = true uevr.params.functions.log_info("[HANDS] handleInput error: " .. tostring(errH)) end
 		
 		-- test 21: second call removed. The offHHand typo (nil -> Handed.Right) made it drive the RIGHT hand as empty-handed,
@@ -3362,6 +3501,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 	if inputIndex ~= nil and user_index ~= inputIndex then return end -- skip the 2nd, all-zero call (see main callback)
 	if T20.shoulder ~= nil then pcall(T20.shoulder.onXInput, state) end
 	if T20.belt ~= nil then pcall(T20.belt.onXInput, state) end
+	pcall(T20.rrXInput, state)
 end)
 
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
@@ -3437,8 +3577,9 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 						else
 							-- step 16: with motion melee + charge-on-swing, a release with no swing cancels (no attack)
 							local cancelled = false
+							-- step 56: never for ranged weapons (casters fire / charge through their own AttackReleased)
 							if configui.getValue("still_release_cancel") ~= false and configui.getValue("charge_on_swing") ~= false
-								and configui.getValue("6dof_right") == true then
+								and configui.getValue("6dof_right") == true and T20.rrOn ~= true then
 								local okC, resC = pcall(T20.S16.cancel, activeWeapon)
 								if okC then cancelled = resC else pcall(meleeLog, "S16 cancel error " .. tostring(resC)) end
 							end
@@ -3458,10 +3599,16 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 					if configui.getValue("frame_layout") ~= false and configui.getValue("l2_native_dodge") ~= false then
 						-- test 9: native L2 dodge (has the animation), aimed away from the HMD: face head yaw first, aim = HMD while it plays
 						-- test 16: with motion melee on, L2 only arms; the stab itself fires (checkMeleeSwing -> l2StabFire)
-						local stabMode = configui.getValue("l2_stab_gesture") ~= false and configui.getValue("6dof_right") == true
+						-- step 56: ranged right-hand weapons (casters / guns, T20.rrOn): L2 = their own alt attack, no stab gesture,
+						-- no dodge facing / HMD aim (they aim with the right hand, step 54)
+						local ranged = T20.rrOn == true
+						local stabMode = not ranged and configui.getValue("l2_stab_gesture") ~= false and configui.getValue("6dof_right") == true
 						if state.Gamepad.bLeftTrigger > 200 or (l2DodgeHeld and state.Gamepad.bLeftTrigger > 100) then
 							if not l2DodgeHeld then
-								if stabMode then
+								if ranged then
+									local okA, errA = pcall(function() activeWeapon:AltAttackPressed() end)
+									pcall(meleeLog, "L2 ranged alt attack " .. (okA and "pressed" or ("error " .. tostring(errA))))
+								elseif stabMode then
 									l2StabArmed = true
 									pcall(meleeLog, "L2 armed: stab to alt attack")
 								else

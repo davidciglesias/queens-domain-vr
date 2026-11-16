@@ -84,6 +84,43 @@ function M.neighbours(list, n, cur, selIdx0)
 	return prev, nxt
 end
 
+-- step 46: lower card row in the body frame. k: 1 weapon prev, 2 weapon next (right side), 3 throwable prev,
+-- 4 throwable next (left side); prev left of next on each side. Returns forward, lateral cm (lateral + = right).
+M.WCARD_INNER_CM = 9.0  -- inner cards' centre this far from the middle (6 cm gap between the two groups)
+M.WCARD_OUTER_CM = 23.0 -- outer cards (2 cm gap to the inner card of the 12 cm wide cards)
+M.WCARD_FWD_IN = 9.0    -- inner cards a bit further forward, outer ones closer: follows the body curve
+M.WCARD_FWD_OUT = 3.0
+function M.wcardPos(k)
+	local outer = (k == 2 or k == 3)
+	local lat = outer and M.WCARD_OUTER_CM or M.WCARD_INNER_CM
+	if k >= 3 then lat = -lat end
+	return outer and M.WCARD_FWD_OUT or M.WCARD_FWD_IN, lat
+end
+
+-- step 46: insert item with sort key id into list[1..n] (ascending), returns the new n (keys kept in parallel ks)
+function M.sortedInsert(list, ks, n, item, id)
+	local i = n
+	while i >= 1 and ks[i] > id do list[i + 1], ks[i + 1] = list[i], ks[i] i = i - 1 end
+	list[i + 1], ks[i + 1] = item, id
+	return n + 1
+end
+
+-- step 49: tiers of one item look the same (same model, ascending SortOrder: live check 2026-11-16). Rank of entry i
+-- among entries with the same key, by sort value: returns rank (1 = lowest), group size. keys/sorts are parallel arrays.
+function M.tierRank(keys, sorts, n, i)
+	local k, so = keys[i], sorts[i]
+	if k == nil then return 1, 1 end
+	local rank, size = 1, 0
+	for j = 1, n do
+		if keys[j] == k then
+			size = size + 1
+			if sorts[j] < so or (sorts[j] == so and j < i) then rank = rank + 1 end
+		end
+	end
+	return rank, size
+end
+M.PIPS = 5 -- most tier pips a card shows
+
 function M.window(total, sel, max)
 	local cnt = math.min(total, max)
 	if total <= max or cnt <= 0 or sel == nil then return 1, cnt end
@@ -96,6 +133,27 @@ function M.slotCount(v)
 	if v < 1 then return 1 end
 	if v > M.MAX_SLOTS then return M.MAX_SLOTS end
 	return v
+end
+
+-- step 58: healing items carry DataImportKey "item_heal_<family>[_<tier>]" (live 2026-11-16); their heal amount is
+-- the balance asset field "Healing<Family><tier>HealAmount" (tier 1 when the key has no suffix). nil = not healing.
+function M.healField(key)
+	if type(key) ~= "string" then return nil end
+	local fam, tier = key:match("^item_heal_(%a+)_?(%d*)$")
+	if fam == nil then return nil end
+	if tier == "" then tier = "1" end
+	return "Healing" .. fam:sub(1, 1):upper() .. fam:sub(2) .. tier .. "HealAmount"
+end
+
+-- step 58: index of the weakest owned healing item: amounts[i] = heal amount (nil = not healing), owned[i] = usable.
+-- Ties keep the earlier entry. Returns nil when none is owned.
+function M.healPick(amounts, owned, n)
+	local best, bestA = nil, nil
+	for i = 1, n do
+		local a = amounts[i]
+		if type(a) == "number" and owned[i] and (bestA == nil or a < bestA) then best, bestA = i, a end
+	end
+	return best
 end
 
 -- step 21: an item's 3D model = the StaticMesh of its pickup class's "PickupGraphics" component template.
@@ -131,10 +189,10 @@ end
 
 ---------------------------------------------------------------- runtime (UEVR)
 local D = nil -- deps from init
-local S = {slots = {}, wslots = {}, wItems = {}, wlist = {}, n = 0, items = {}, counts = {}, yaw = nil, refreshT = 0.0, shown = false, grab = nil,
+local S = {slots = {}, wslots = {}, wItems = {}, wlist = {}, tlist = {}, tkeys = {}, wCounts = {}, tCandBuf = {}, tCandT = 0.0, tOut = {}, tOut2 = {}, n = 0, items = {}, counts = {}, yaw = nil, refreshT = 0.0, shown = false, grab = nil,
 	gripPrev = {false, false}, gripEdge = {false, false}, gripNow = {false, false}, errLogged = false, rot = {Pitch = 0, Yaw = 0, Roll = 0},
 	loc = {X = 0, Y = 0, Z = 0}, scale = {X = 1, Y = 1, Z = 1}, created = 0, failT = 0.0, lastUseT = 0.0, angs = {}, handPos = {},
-	pressed = {false, false}, ownedCounts = {}, list = {}, selAddr = nil, selCheckT = 0.0, mask = nil, quick = nil, forceWalk = true,
+	pressed = {false, false}, ownedCounts = {}, list = {}, healOwn = {}, selAddr = nil, selCheckT = 0.0, mask = nil, quick = nil, forceWalk = true,
 	meshes = {}, mloc = {X = 0, Y = 0, Z = 0}, mrot = {Pitch = 0, Yaw = 0, Roll = 0}, mscale = {X = 1, Y = 1, Z = 1}, spin = 0.0, hl = nil}
 M.MODEL_HALF_CM = 4.5  -- model's largest half extent on the belt
 M.HL_SCALE = 1.4       -- highlighted (grip would take it) model scale
@@ -156,12 +214,37 @@ local function log(msg) if D ~= nil and D.log ~= nil then D.log("[BELT] " .. msg
 
 function M.init(deps)
 	D = deps
-	S.ktl = nil
-	pcall(function() S.ktl = D.uevrUtils.find_default_instance("Class /Script/Engine.KismetTextLibrary") end)
 	log("init")
 end
 
 local function enabled() return D ~= nil and D.configui.getValue("belt") ~= false end
+
+-- step 58: heal amount per rotation-order entry (false = not healing), rebuilt when the rotation order length changes.
+-- Balance asset path found live 2026-11-16; if it can't be read, SortOrder stands in (still lowest tier first).
+local BALANCE = "PlayerBalance_C /Game/Player/PlayerBalance.PlayerBalance"
+local function healAmounts(ro)
+	if S.healN == #ro then return S.healAmt end
+	S.healN, S.healAmt = #ro, {}
+	local bal = nil
+	pcall(function() bal = uevr.api:find_uobject(BALANCE) end)
+	local nh, fb = 0, 0
+	for i, it in ipairs(ro) do
+		local a = false
+		pcall(function()
+			local f = M.healField(it.DataImportKey:to_string())
+			if f ~= nil then
+				local v = nil
+				if bal ~= nil then pcall(function() v = bal[f] end) end
+				if type(v) ~= "number" then v = it.SortOrder or i fb = fb + 1 end
+				a = v
+			end
+		end)
+		S.healAmt[i] = a
+		if a then nh = nh + 1 end
+	end
+	log(string.format("heal card: %d healing types of %d (%d without balance amount)", nh, #ro, fb))
+	return S.healAmt
+end
 
 -- Step 8: walk the game's cycle (owned quick-slot items only), then put the selection back. Returns {address = true}.
 local function walkQuick(pawn, slot, n)
@@ -211,17 +294,35 @@ function M.refresh(forceWalk)
 		pcall(function() local s = slot.SelectedConsumable if s ~= nil then selAddr = s:get_address() end end)
 		S.selAddr = selAddr
 		local selPos = nil
+		-- step 58 (belt_heal_card): one fixed leftmost card = the weakest owned healing item; other healing types are
+		-- left out of the scrolling window
+		local ha = nil
+		if D.configui.getValue("belt_heal_card") ~= false then
+			local okA, r = pcall(healAmounts, ro)
+			if okA then ha = r end
+		end
+		local hOwn = S.healOwn
 		for i, it in ipairs(ro) do
+			hOwn[i] = false
 			if oc[i] > 0 then
 				local a = it:get_address()
 				if q == nil or q[a] then
-					total = total + 1
-					L[total] = i
-					if a == selAddr then selPos = total end
+					if ha ~= nil and ha[i] then hOwn[i] = true
+					else
+						total = total + 1
+						L[total] = i
+						if a == selAddr then selPos = total end
+					end
 				end
 			end
 		end
 		for k = total + 1, #L do L[k] = nil end
+		local hj = ha ~= nil and M.healPick(ha, hOwn, #ro) or nil
+		if hj ~= nil then
+			n = 1
+			S.items[1], S.counts[1] = ro[hj], oc[hj]
+			max = max - 1
+		end
 		local start, cnt = M.window(total, selPos, max)
 		for k = 0, cnt - 1 do
 			local j = L[(start - 1 + k) % total + 1]
@@ -243,13 +344,123 @@ function M.refresh(forceWalk)
 		if nw ~= nil then nd = nw.ItemData end
 	end)
 	S.wItems[1], S.wItems[2] = pd, nd
+	-- step 46: previous / next equipped throwable (left shoulder / reach across) for the left-side cards
+	local tp, tn = nil, nil
+	local okT, errT = pcall(function()
+		local o = S.tOut
+		o.result = nil
+		pawn:GetCurrentlySelectedDaggerType(o)
+		local cur = o.result
+		if cur == nil then return end
+		if S.tUtil == nil then
+			local c = uevr.api:find_uobject("Class /Script/QueensDomain.FS_SaveGameUtils")
+			if c ~= nil then S.tUtil = c:get_class_default_object() end
+		end
+		local now = os.clock()
+		if S.tCand == nil or now > S.tCandT then -- candidates = item data of the selected throwable's equip slot type
+			S.tCandT = now + 10.0
+			local st, all = cur.EquipSlot, UEVR_UObjectHook.get_objects_by_class(cur:get_class(), false)
+			local c, n = S.tCandBuf, 0
+			for i = 1, #all do
+				local it = all[i]
+				if it.EquipSlot == st and not it:get_full_name():find("Default__", 1, true) then n = n + 1 c[n] = it end
+			end
+			for i = #c, n + 1, -1 do c[i] = nil end
+			S.tCand = c
+		end
+		local L, K, n = S.tlist, S.tkeys, 0
+		local slot = gi.ActiveSaveSlot
+		for i = 1, #S.tCand do
+			local it = S.tCand[i]
+			if slot:IsItemEquipped(it) then
+				local id = S.tUtil ~= nil and S.tUtil:GetItemEquipSlotID(gi, it, S.tOut2) or i
+				n = M.sortedInsert(L, K, n, it, tonumber(id) or i)
+			end
+		end
+		for i = #L, n + 1, -1 do L[i], K[i] = nil, nil end
+		if n ~= S.tN then S.tN = n log("throwables equipped: " .. n) end
+		local p, x = M.neighbours(L, n, cur, nil)
+		tp, tn = p, x
+	end)
+	if not okT and not S.tErrLogged then S.tErrLogged = true log("throwable cards failed: " .. tostring(errT)) end
+	S.wItems[3], S.wItems[4] = tp, tn
+	-- step 49b: current charges of those throwables (one charge component per throwable)
+	for k = 3, 4 do
+		local c = nil
+		local it = S.wItems[k]
+		if it ~= nil then pcall(function() c = pawn:GetDaggerChargeCompFromItem(it).CurrentCharges end) end
+		S.wCounts[k] = c
+	end
 end
 
+-- step 49: owned count on the card. FText can't be built from Lua (Conv_StringToText returns nil, SetText throws), so
+-- the number is a style-less SpinBox (float value, 0 fraction digits). count < 1 or nil hides it.
 local function setText(slot, count)
-	if slot.text == nil or S.ktl == nil or slot.shownCount == count then return end
+	if slot.text == nil or slot.shownCount == count then return end
 	slot.shownCount = count
-	pcall(function() slot.text:SetText(S.ktl:Conv_StringToText(count > 1 and tostring(count) or "")) end)
+	pcall(function()
+		if count ~= nil and count >= 1 then
+			slot.text:SetValue(count)
+			slot.text:SetVisibility(4)
+		else
+			slot.text:SetVisibility(2)
+		end
+	end)
 end
+
+-- step 49: tier pips (rank among owned-or-not consumables sharing the same model); hidden for single-tier items
+local function setPips(slot, rank, size)
+	if slot.pips == nil then return end
+	local n = (size ~= nil and size > 1) and math.min(rank or 0, M.PIPS) or 0
+	if slot.pipN == n then return end
+	slot.pipN = n
+	for k = 1, M.PIPS do pcall(function() slot.pips[k]:SetVisibility(k <= n and 4 or 2) end) end
+end
+
+-- font for the numbers: a copy of the first game text widget's font (the engine default is thin); nil = default
+local function gameFont()
+	if S.fontTried then return S.fontSrc end
+	S.fontTried = true
+	pcall(function()
+		local all = UEVR_UObjectHook.get_objects_by_class(uevr.api:find_uobject("Class /Script/UMG.TextBlock"), false)
+		for i = 1, #all do
+			local t = all[i]
+			local ok, fo = pcall(function() return t.Font.FontObject end)
+			if ok and fo ~= nil and not t:get_full_name():find("Default__", 1, true) then S.fontSrc = t break end
+		end
+	end)
+	log("count font from game widget: " .. tostring(S.fontSrc ~= nil))
+	return S.fontSrc
+end
+
+local NUM_FG = {SpecifiedColor = {R = 1.0, G = 0.95, B = 0.8, A = 1.0}, ColorUseRule = 0}
+local PIP_C = {R = 1.0, G = 0.80, B = 0.30, A = 1.0}
+local function makeNumber(wt)
+	local sb = D.uevrUtils.spawn_object("Class /Script/UMG.SpinBox", wt)
+	if sb == nil then return nil end
+	-- style before the widget is added (Slate is built from it then); struct reads are live views of sb's memory
+	pcall(function()
+		local st = sb.WidgetStyle
+		for _, k in ipairs({"BackgroundBrush", "HoveredBackgroundBrush", "ActiveFillBrush", "InactiveFillBrush", "ArrowsImage"}) do
+			pcall(function() st[k].DrawAs = 0 end) -- NoDrawType
+		end
+		pcall(function() st.TextPadding = {Left = 0, Top = 0, Right = 1, Bottom = 0} end)
+		pcall(function() st.ArrowsImage.ImageSize = {X = 0, Y = 0} end)
+	end)
+	pcall(function() sb.Justification = 2 end) -- right (Slate keeps a ~36 px minimum width)
+	pcall(function()
+		local src = gameFont()
+		if src ~= nil then sb.Font = src.Font end -- copied into sb; only sb's copy is changed below
+		local f = sb.Font
+		f.Size = M.NUM_PT
+		pcall(function() f.OutlineSettings.OutlineSize = 2 f.OutlineSettings.OutlineColor = {R = 0, G = 0, B = 0, A = 1} end)
+	end)
+	pcall(function() sb.ForegroundColor = NUM_FG end)
+	pcall(function() sb:SetMinFractionalDigits(0) sb:SetMaxFractionalDigits(0) end)
+	pcall(function() sb:SetVisibility(2) end)
+	return sb
+end
+M.NUM_PT = 12 -- count font size (card canvas is M.PX px; 18 covered most of the model)
 
 local function createSlot(i)
 	if os.clock() < S.failT then return nil end
@@ -261,11 +472,11 @@ local function createSlot(i)
 	if widget == nil then S.failT = os.clock() + 5.0 log("no host widget") return nil end
 	local img = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
 	if img == nil then S.failT = os.clock() + 5.0 log("Image spawn failed") return nil end
-	local root, text, bgImg, edges = img, nil, nil, nil
+	local root, text, bgImg, edges, pips = img, nil, nil, nil, nil
 	pcall(function()
 		local ov = D.uevrUtils.spawn_object("Class /Script/UMG.Overlay", widget.WidgetTree)
 		local bg = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
-		local tb = D.uevrUtils.spawn_object("Class /Script/UMG.TextBlock", widget.WidgetTree)
+		local tb = makeNumber(widget.WidgetTree)
 		if ov == nil or bg == nil then return end
 		bgImg = bg
 		bg:SetColorAndOpacity(BG_N) -- parchment tint: visible on dark ground
@@ -291,9 +502,28 @@ local function createSlot(i)
 		if tb ~= nil then
 			local s2 = ov:AddChildToOverlay(tb)
 			s2:SetHorizontalAlignment(2) s2:SetVerticalAlignment(2) -- right, bottom
-			pcall(function() tb:SetShadowOffset({X = 1.0, Y = 1.0}) end)
+			pcall(function() s2:SetPadding({Left = 0, Top = 0, Right = -2, Bottom = -3}) end)
 			text = tb
 		end
+		pcall(function() -- step 49: tier pips, top left
+			local hb = D.uevrUtils.spawn_object("Class /Script/UMG.HorizontalBox", widget.WidgetTree)
+			if hb == nil then return end
+			local p = {}
+			for k = 1, M.PIPS do
+				local pip = D.uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
+				if pip == nil then return end
+				pip:SetBrushSize({X = 6, Y = 6})
+				pip:SetColorAndOpacity(PIP_C)
+				pip:SetVisibility(2)
+				local hs = hb:AddChildToHorizontalBox(pip)
+				pcall(function() hs:SetPadding({Left = 0, Top = 0, Right = 2, Bottom = 0}) end)
+				p[k] = pip
+			end
+			local s3 = ov:AddChildToOverlay(hb)
+			s3:SetHorizontalAlignment(1) s3:SetVerticalAlignment(1) -- left, top
+			s3:SetPadding({Left = 5, Top = 5, Right = 0, Bottom = 0})
+			pips = p
+		end)
 		root = ov
 	end)
 	widget.WidgetTree.RootWidget = root
@@ -303,9 +533,9 @@ local function createSlot(i)
 	pcall(function() comp:SetCastShadow(false) end)
 	pcall(function() comp:SetCollisionEnabled(0) end)
 	S.created = S.created + 1
-	local slot = {comp = comp, img = img, text = text, bg = bgImg, edges = edges, item = nil, x = 0, y = 0, z = 0, on = false, visible = true,
+	local slot = {comp = comp, img = img, text = text, pips = pips, bg = bgImg, edges = edges, item = nil, x = 0, y = 0, z = 0, on = false, visible = true,
 		mesh = nil, model = nil, hl = false}
-	log(string.format("card %d created text=%s", i, tostring(text ~= nil)))
+	log(string.format("card %d created number=%s pips=%s", i, tostring(text ~= nil), tostring(pips ~= nil)))
 	return slot
 end
 
@@ -381,6 +611,38 @@ local function setModel(slot)
 	if slot.mesh ~= nil then pcall(function() slot.mesh:SetVisibility(slot.visible and m ~= nil, false) end) end
 end
 
+-- step 49: {rank, size} of an item among all consumable types with the same model (icon if none), by SortOrder.
+-- Built once per rotation-order length (all consumable types, owned or not, so a rank never shifts with ownership).
+local function tierFor(item)
+	local pawn = uevr.api:get_local_pawn(0)
+	local ro = pawn ~= nil and pawn.ConsumableRotationOrder or nil
+	if ro == nil then return 1, 1 end
+	if S.tierN ~= #ro then
+		S.tierN = #ro
+		S.tier = {}
+		local keys, sorts, addrs = {}, {}, {}
+		for j, it in ipairs(ro) do
+			local key, so = nil, 0
+			pcall(function()
+				local m = itemModel(it)
+				key = m ~= nil and m.mesh:get_address() or it.ItemIcon:get_address()
+				so = it.SortOrder or 0
+			end)
+			keys[j], sorts[j], addrs[j] = key or ("u" .. j), so, it:get_address()
+		end
+		local multi = 0
+		for j = 1, #ro do
+			local rk, sz = M.tierRank(keys, sorts, #ro, j)
+			S.tier[addrs[j]] = {rk, sz}
+			if sz > 1 and rk == 1 then multi = multi + 1 end
+		end
+		log(string.format("tiers: %d consumable types, %d multi-tier groups", #ro, multi))
+	end
+	local t = S.tier[item:get_address()]
+	if t == nil then return 1, 1 end
+	return t[1], t[2]
+end
+
 -- icon card: tinted fill (gold when highlighted); model card: no fill (it would draw over the model), frame bars instead
 local function cardStyle(slot)
 	slot.styled = true
@@ -454,7 +716,7 @@ end
 
 function M.hideAll()
 	releaseHeld()
-	for k = 1, 2 do if S.wslots[k] ~= nil then show(S.wslots[k], false) end end
+	for k = 1, 4 do if S.wslots[k] ~= nil then show(S.wslots[k], false) end end
 	for i = 1, M.MAX_SLOTS do local s = S.slots[i] if s ~= nil then show(s, false) s.on = false end end
 	S.shown = false
 	S.grab = nil
@@ -466,7 +728,7 @@ function M.reset()
 	M.hideAll()
 	for i = 1, M.MAX_SLOTS do local s = S.slots[i] if s ~= nil then s.held = false end end
 	for i = 1, M.MAX_SLOTS do S.slots[i] = nil end
-	S.wslots[1], S.wslots[2] = nil, nil
+	for k = 1, 4 do S.wslots[k] = nil end
 	S.yaw = nil
 end
 
@@ -549,10 +811,8 @@ local function useItem(item)
 	return ok, err
 end
 
--- step 32/39: display-only cards under the belt row: previous weapon (left shoulder) on the left, next (right) on the right
-M.WEAPON_DROP_CM = 18.0 -- below the belt row ...
-M.WEAPON_RADIUS = 12.0  -- ... closer to the body (seen from above they clear the outer belt cards; Test 49) ...
-M.WEAPON_DEG = 55.0     -- ... this far left / right of the centre
+-- step 32/39/46: display-only cards under the belt row (M.wcardPos): weapons prev / next on the right, throwables on the left
+M.WEAPON_DROP_CM = 18.0 -- below the belt row
 local function weaponCard(want, cx, cy, cz, hp, k)
 	local w = S.wslots[k]
 	local item = S.wItems[k]
@@ -571,7 +831,10 @@ local function weaponCard(want, cx, cy, cz, hp, k)
 		w.item = item
 		pcall(function() w.img:SetBrushFromTexture(w.item.ItemIcon, false) end)
 	end
-	local x, y = M.slotPos(cx, cy, S.yaw, (k == 1 and -1 or 1) * M.WEAPON_DEG, M.WEAPON_RADIUS)
+	setText(w, k >= 3 and S.wCounts[k] or nil)
+	local f, l = M.wcardPos(k)
+	local fx, fy = math.cos(math.rad(S.yaw)), math.sin(math.rad(S.yaw))
+	local x, y = cx + fx * f - fy * l, cy + fy * f + fx * l
 	pcall(place, w, x, y, cz - M.WEAPON_DROP_CM, hp.X, hp.Y, hp.Z)
 	if w.scaled == nil then
 		w.scaled = true
@@ -633,6 +896,8 @@ function M.tick(dt)
 				s.shownCount = nil
 				pcall(function() s.img:SetBrushFromTexture(s.item.ItemIcon, false) end)
 				setModel(s)
+				local okT, rk, sz = pcall(tierFor, s.item)
+				setPips(s, okT and rk or 1, okT and sz or 1)
 			end
 			setText(s, S.counts[i] or 0)
 		end
@@ -732,6 +997,8 @@ function M.tick(dt)
 	end
 	pcall(weaponCard, want, cx, cy, cz, hp, 1)
 	pcall(weaponCard, want, cx, cy, cz, hp, 2)
+	pcall(weaponCard, want, cx, cy, cz, hp, 3)
+	pcall(weaponCard, want, cx, cy, cz, hp, 4)
 end
 
 return M
