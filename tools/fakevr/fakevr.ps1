@@ -8,8 +8,10 @@ param([Parameter(Position = 0)][ValidateSet('on', 'off', 'status')][string]$Cmd 
 $ErrorActionPreference = 'Stop'
 
 $Here      = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SteamVR   = if ($env:QD_STEAMVR) { $env:QD_STEAMVR } else { 'F:\Steam\steamapps\common\SteamVR' }
-$Settings  = if ($env:QD_VRSETTINGS) { $env:QD_VRSETTINGS } else { 'F:\Steam\config\steamvr.vrsettings' }
+# Steam root: $env:QD_STEAM, else the registry SteamPath, else %ProgramFiles(x86)%\Steam
+$SteamRoot = if ($env:QD_STEAM) { $env:QD_STEAM } else { $r = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam' -ErrorAction SilentlyContinue).SteamPath; if ($r) { $r } else { Join-Path ${env:ProgramFiles(x86)} 'Steam' } }
+$SteamVR   = if ($env:QD_STEAMVR) { $env:QD_STEAMVR } else { Join-Path $SteamRoot 'steamapps\common\SteamVR' }
+$Settings  = if ($env:QD_VRSETTINGS) { $env:QD_VRSETTINGS } else { Join-Path $SteamRoot 'config\steamvr.vrsettings' }
 $DriverDir = Join-Path $Here 'driver\qdfake'
 $BackupDir = Join-Path $Here 'backup'
 $StateFile = Join-Path $BackupDir 'fakevr_state.json'

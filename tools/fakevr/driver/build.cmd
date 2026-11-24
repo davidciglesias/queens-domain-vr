@@ -3,7 +3,7 @@ rem Builds driver_qdfake.dll (x64, static CRT). SteamVR must be closed (the DLL 
 setlocal
 set "HERE=%~dp0"
 set "PATH=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer;%PATH%"
-if not defined VCVARS set "VCVARS=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
+if not defined VCVARS for /f "delims=" %%i in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -find "VC\Auxiliary\Build\vcvars64.bat"') do set "VCVARS=%%i"
 call "%VCVARS%" >nul || (echo vcvars64.bat failed: %VCVARS% & exit /b 1)
 if not exist "%HERE%obj" mkdir "%HERE%obj"
 if not exist "%HERE%qdfake\bin\win64" mkdir "%HERE%qdfake\bin\win64"

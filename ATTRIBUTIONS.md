@@ -3,7 +3,8 @@
 ## Base UEVR profile: Megido (Flat2VR Discord)
 `QueensDomain-Win64-Shipping/scripts/queens_domain_vr.lua`
 is the initial Queen's Domain UEVR profile script (version `QueensDomain-Win64-Shipping-071126`) created by **Megido** and
-shared on the Flat2VR Discord. This repository adds motion-based melee on top
+shared on the Flat2VR Discord. Pickup grip offsets and pickup area lists were later updated from a newer
+release of the same profile by Megido. This repository adds motion-based melee on top
 of it. The script is modified from the original, and the unmodified original is
 not redistributed here.
 

@@ -11,12 +11,7 @@ QueensDomain-Win64-Shipping/scripts/*
 !QueensDomain-Win64-Shipping/scripts/libs/
 QueensDomain-Win64-Shipping/scripts/libs/*
 !QueensDomain-Win64-Shipping/scripts/libs/motion_melee.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_grip.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_pickup.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_belt.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_ik.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_shoulder.lua
-!QueensDomain-Win64-Shipping/scripts/libs/qd_knives.lua
+!QueensDomain-Win64-Shipping/scripts/libs/qd_*.lua
 
 # Local noise
 *.log
@@ -30,6 +25,7 @@ refs/
 tools/fakevr/venv/
 tools/fakevr/third_party/
 tools/fakevr/driver/obj/
+tools/fakevr/driver/qdfake/bin/
 tools/fakevr/backup/
 tools/fakevr/__pycache__/
 
@@ -46,3 +42,9 @@ OPTIONS_*.md
 tools/codemap_notes.md
 tools/gen_codemap.sh
 tools/*.bak_*
+
+# Backup copies made before edits (file.pre-sNNN, file.pre-refs, ...)
+*.pre-*
+
+# Personal convenience launcher (dev-only, double-click helper)
+RESTORE_REAL_HEADSET.cmd

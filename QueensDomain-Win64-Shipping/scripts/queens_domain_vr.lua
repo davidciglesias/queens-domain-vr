@@ -181,17 +181,17 @@ local configDefinition = {
 				initialValue = false
 			},
 			{ widgetType = "checkbox", id = "aim_dot", label = "Knife aim: grey dot instead of laser", initialValue = true },
-			{ widgetType = "slider_float", id = "aim_dot_size", label = "Knife aim dot size", initialValue = 1.0, range = {0.2, 4.0} },
+			{ widgetType = "slider_float", id = "aim_dot_size", label = "Knife aim dot size", initialValue = 1.057, range = {0.2, 4.0} },
 			-- test 8
 			{ widgetType = "checkbox", id = "hide_knife_model", label = "Hide 3D knife model in left hand", initialValue = false },
 			{ widgetType = "checkbox", id = "no_late_update", label = "Disable controller late-update (weapon follows HMD fix?)", initialValue = true },
 			{ widgetType = "checkbox", id = "roomscale", label = "Roomscale movement (A/B test for weapon drift)", initialValue = false },
-			{ widgetType = "checkbox", id = "l2_native_dodge", label = "L2 = weapon alt attack (sword: forward stab, spear: stab then back off) toward where you look", initialValue = true },
+			{ widgetType = "checkbox", id = "l2_native_dodge", label = "Special button (RT; Classic: L2) = weapon alt attack (sword: forward stab, spear: stab then back off) toward where you look", initialValue = true },
 			{ widgetType = "checkbox", id = "rstick_turn", label = "Right stick = smooth turn left/right (off = right stick dodge below)", initialValue = true },
 			{ widgetType = "slider_float", id = "rstick_turn_speed", label = "Smooth turn speed (x game turn rate)", initialValue = 1.0, range = {0.2, 2.0} },
 			{ widgetType = "checkbox", id = "rstick_dodge", label = "Right stick = directional dodge (only when smooth turn is off)", initialValue = true },
 			-- test 16
-			{ widgetType = "checkbox", id = "l2_stab_gesture", label = "Alt attack = hold L2 + stab with right hand (needs Motion Controls Melee; off = L2 alone)", initialValue = true },
+			{ widgetType = "checkbox", id = "l2_stab_gesture", label = "Special attack = hold the special button (RT; Classic: L2) + stab with the right hand (needs Motion Controls Melee; off = the button alone)", initialValue = true },
 			{ widgetType = "slider_float", id = "stab_outward", label = "Stab detection: min share of hand motion away from head (0 = off; rejected real pokes)", initialValue = 0.0, range = {0.0, 0.95} },
 			-- test 17
 			{ widgetType = "slider_float", id = "stab_axis", label = "Stab detection: min alignment of hand motion toward the weapon tip (0 = off: any stroke with L2 held = alt attack)", initialValue = 0.0, range = {0.0, 0.95} },
@@ -199,20 +199,56 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "motion_hit_window", label = "Hits during the whole physical swing (opens the hit window at swing start, closes when the hand slows)", initialValue = true },
 			{ widgetType = "checkbox", id = "crosshair_on_top", label = "Game crosshair drawn on top of scenery", initialValue = true },
 			{ widgetType = "checkbox", id = "weapon_fov_fix", label = "Undo the game's first-person weapon FOV squash (weapon drift/swim fix)", initialValue = true },
-			{ widgetType = "slider_float", id = "weapon_fpfov", label = "Weapon FOV value (0 = auto: game camera FOV, worked at 100; game uses 60)", initialValue = 0.0, range = {0.0, 160.0} },
+			{ widgetType = "slider_float", id = "weapon_fpfov", label = "Weapon FOV value (0 = auto: game camera FOV, worked at 100; game uses 60)", initialValue = 100.0, range = {0.0, 160.0} },
 			{ widgetType = "checkbox", id = "weapon_depth_fix", label = "Held weapon at its true depth (walls and enemies can hide it; off = game draws it on top)", initialValue = true },
 			{ widgetType = "checkbox", id = "game_crosshair", label = "Game crosshair in 3D at knife aim point (hides the left-eye-only copy)", initialValue = true },
 			{ widgetType = "checkbox", id = "game_crosshair_gaze", label = "Game crosshair where you look when not knife-aiming", initialValue = true },
 			{ widgetType = "slider_float", id = "crosshair_size", label = "Game crosshair size", initialValue = 1.0, range = {0.2, 4.0} },
 			{ widgetType = "checkbox", id = "crosshair_bold", label = "Game crosshair: bold + dark outline", initialValue = true },
 			{ widgetType = "slider_float", id = "crosshair_brightness", label = "Game crosshair brightness", initialValue = 1.5, range = {1.0, 6.0} },
-			{ widgetType = "checkbox", id = "world_detail", label = "Sharper world: override the game's texture detail and dither (the game's own options are locked)", initialValue = true },
-			{ widgetType = "slider_float", id = "world_mip_bias", label = "Sharper world: texture mip bias (game -0.5; lower = finer far textures, more shimmer)", initialValue = -1.5, range = {-4.0, 1.0} },
-			{ widgetType = "checkbox", id = "world_dither", label = "Sharper world: keep the game's dither pattern", initialValue = false },
+			{ widgetType = "checkbox", id = "world_detail", label = "World detail: override the game's texture detail and dither (the game's own options are locked)", initialValue = true },
+			-- step 122e (headset 2026-11-20c): status effect screen overlays -> camera post-process (both eyes)
+			{ widgetType = "checkbox", id = "status_fx_eyes", label = "Status effects (poison, buffs, ...) in both eyes instead of on the UI screen", initialValue = true },
+			-- step 124 (headset 2026-11-21: tint odd / per eye, effects hard to tell apart): game art on a head-locked visor
+			-- step 125 (headset 2026-11-21b: visors not visible, tint differs per eye, badge wanted with an icon): new id so the
+			-- old style numbers don't carry over
+			{ widgetType = "combo", id = "status_fx_mode", label = "Status effect style", selections = {"Edge glow + icon badge on the left arm HUD", "Edge glow only",
+				"Icon badge only", "Edge glow + colour tint + icon badge"}, initialValue = 1, width = 330 },
+			{ widgetType = "checkbox", id = "status_acc_icons", label = "Equipped accessories: under the right forearm, shown when you turn it to look", initialValue = true },
+			{ widgetType = "slider_float", id = "acc_nudge_out", label = "Accessories: out from the arm (cm)", initialValue = 0.0, range = {-10.0, 10.0} }, -- step 128 (user asked)
+			{ widgetType = "slider_float", id = "acc_nudge_elbow", label = "Accessories: toward the elbow (cm)", initialValue = 0.0, range = {-10.0, 10.0} },
+			{ widgetType = "slider_float", id = "acc_nudge_across", label = "Accessories: across the arm (cm)", initialValue = 0.0, range = {-10.0, 10.0} }, -- step 126b
+			{ widgetType = "checkbox", id = "eye_ss_off", label = "Turn off screen-space reflections + contact shadows (they differ between the eyes)", initialValue = true },
+			{ widgetType = "slider_float", id = "world_mip_bias", label = "World detail: texture mip bias (game -0.5; lower = finer far textures but more shimmer in VR; higher = blockier, calmer)", initialValue = 1.0, range = {-4.0, 2.0} },
+			{ widgetType = "checkbox", id = "world_dither", label = "World detail: keep the game's dither pattern", initialValue = true },
 			{ widgetType = "checkbox", id = "menu_world_sharp", label = "Keep the world sharp behind menus (game drops it to 1% resolution; turning off needs a game restart)", initialValue = true },
 			{ widgetType = "checkbox", id = "menu_black", label = "Black out the world behind menus", initialValue = false },
+			{ widgetType = "checkbox", id = "weapon_charge_on_gun", label = "Shooting weapons: their charge strip (e.g. the heavy rifle's alt-fire shells) sits on the gun instead of the left hand", initialValue = true },
+			{ widgetType = "slider_float", id = "weapon_charge_melee_x", label = "Melee charge strip: forward (cm, from the right controller)", initialValue = 17.625, range = {-30, 30} },
+			{ widgetType = "slider_float", id = "weapon_charge_melee_y", label = "Melee charge strip: right (cm)", initialValue = 11.625, range = {-30, 30} },
+			{ widgetType = "slider_float", id = "weapon_charge_melee_z", label = "Melee charge strip: up (cm)", initialValue = 5.219, range = {-30, 40} },
+			{ widgetType = "checkbox", id = "weapon_charge_per_weapon", label = "Melee charge strip: remember the spot per weapon", initialValue = true },
+			{ widgetType = "checkbox", id = "weapon_charge_forearm", label = "Melee charge strip on the right forearm (turns with the forearm; guns keep theirs on the gun)", initialValue = true },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_x", label = "Forearm charge strip X (cm)", initialValue = 0.0, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_y", label = "Forearm charge strip Y (cm, + = toward the elbow)", initialValue = 11.688, range = {-20, 30} },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_z", label = "Forearm charge strip Z (cm, + = back of the forearm)", initialValue = 2.5, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_pitch", label = "Forearm charge strip pitch", initialValue = 90.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_yaw", label = "Forearm charge strip yaw", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "weapon_charge_fa_roll", label = "Forearm charge strip roll", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "checkbox", id = "weapon_charge_upper", label = "Charge strip on the right upper arm, any weapon (doesn't roll with the wrist; wins over the forearm)", initialValue = true },
+			-- step 119: placement sliders (new ids; old weapon_charge_ua_* stale)
+			{ widgetType = "slider_float", id = "arm_hud_rf_x", label = "Right arm HUD (charge strip, lower arm by the glove): X (cm, across the arm)", initialValue = 0.0, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_rf_y", label = "Right arm HUD (charge strip, lower arm by the glove): Y (cm, + = toward the elbow)", initialValue = 8.0, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_rf_z", label = "Right arm HUD (charge strip, lower arm by the glove): Z (cm, + = out from the arm)", initialValue = 4.5, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_rf_pitch", label = "Right arm HUD (charge strip, lower arm by the glove): pitch", initialValue = 90.0, range = {-180.0, 180.0} },
+			{ widgetType = "slider_float", id = "arm_hud_rf_yaw", label = "Right arm HUD (charge strip, lower arm by the glove): yaw", initialValue = 0.0, range = {-180.0, 180.0} },
+			{ widgetType = "slider_float", id = "arm_hud_rf_roll", label = "Right arm HUD (charge strip, lower arm by the glove): roll", initialValue = 0.0, range = {-180.0, 180.0} },
+			{ widgetType = "checkbox", id = "ranged_fire_buffer", label = "Shooting weapons: a pull during the gun's fire delay fires as soon as it is ready", initialValue = true },
+			{ widgetType = "checkbox", id = "ranged_hold_fire", label = "Shooting weapons: holding the trigger keeps firing like the game (full-auto guns repeat)", initialValue = true },
 			{ widgetType = "checkbox", id = "aim_ranged_right", label = "Energy / shooting weapons aim with the right hand (second crosshair; throws still aim with the left)", initialValue = true },
 			{ widgetType = "checkbox", id = "aim_grip_right", label = "Right grip moves (weapon jumps etc.) aim with the right hand", initialValue = true },
+			{ widgetType = "slider_float", id = "throw_aim_pitch", label = "Left-hand throw aim: raise toward the back of the hand (deg; 35 = along the fingers; 0 with sideways 0 = plain controller aim)", initialValue = 35.0, range = {-90, 90} },
+			{ widgetType = "slider_float", id = "throw_aim_yaw", label = "Left-hand throw aim: sideways toward the thumb (deg; 7 = along the fingers)", initialValue = 7.0, range = {-90, 90} },
 			{ widgetType = "combo", id = "crosshair_color_right", label = "Right-hand crosshair colour", selections = {"Game", "White", "Yellow", "Cyan", "Magenta", "Green"}, initialValue = 4, width = 150 },
 			{ widgetType = "combo", id = "crosshair_color", label = "Game crosshair colour", selections = {"Game", "White", "Yellow", "Cyan", "Magenta", "Green"}, initialValue = 1, width = 150 },
 			-- test 20
@@ -222,13 +258,64 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "shoulder_switch", label = "Shoulder weapon switch: right hand + right grip past the right shoulder = next weapon, past the left shoulder = previous; left hand does the same for throwables", initialValue = true },
 			{ widgetType = "checkbox", id = "belt", label = "Consumable belt: owned items hang at your waist (look down); grip one, bring it to your mouth to use it", initialValue = true },
 			{ widgetType = "checkbox", id = "item_hud", label = "Selected-item HUD on the left hand (off: the belt card of the selected item gets a blue frame)", initialValue = false },
-			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 5, range = {1, 5} },
-			{ widgetType = "checkbox", id = "belt_heal_card", label = "Belt heal card: the leftmost card is always your weakest healing item (lowest tier first); other healing tiers leave the belt", initialValue = true },
-			{ widgetType = "slider_float", id = "belt_drop", label = "Belt height: cm below your eyes", initialValue = 60.0, range = {30.0, 95.0} },
+			{ widgetType = "checkbox", id = "belt_arrows", label = "Belt: heal card set apart (right of the items, a bit higher)", initialValue = true },
+			{ widgetType = "slider_int", id = "belt_slots", label = "Belt cards: N quick-slot items around the game's current item (its next/previous item buttons scroll the belt)", initialValue = 3, range = {1, 5} },
+			{ widgetType = "combo", id = "grab_button", label = "Grab belt cards / shoulder weapon with (trigger = the same hand's trigger; grip = old behaviour)", selections = {"Trigger", "Grip"}, initialValue = 1, width = 150 },
+			{ widgetType = "checkbox", id = "belt_heal_card", label = "Belt heal cards: weakest healing item on the left, strongest on the right (when you own a stronger one); other healing tiers leave the belt", initialValue = true },
+			{ widgetType = "checkbox", id = "belt_panic_heal", label = "Panic heal: the use-item button always uses the heal card's item; next / previous item only scroll the belt (needs the heal card)", initialValue = true },
+			{ widgetType = "checkbox", id = "belt_ammo_card", label = "Belt ammo card: shots left for a held energy weapon (small centre card; also on the weapon cards)", initialValue = false },
+			{ widgetType = "checkbox", id = "belt_3d", label = "Belt 3D skin (experimental): item models hang from a belt ring, a golden rim marks the item your hand would grab (cyan = the use-button item); no cards", initialValue = false },
+			{ widgetType = "slider_float", id = "shoulder_zone_low", label = "Shoulder switch zone: lowest hand height (cm below the eyes)", initialValue = 24.0, range = {12.0, 40.0} },
+			{ widgetType = "slider_float", id = "grab_point_fwd", label = "Grab point: cm in front of the controller (toward the fingertips, 0 = palm)", initialValue = 3.894, range = {0.0, 14.0} },
+			{ widgetType = "slider_float", id = "belt_3d_size", label = "3D belt model size: cm (longest side)", initialValue = 10.163, range = {6.0, 12.0} },
+			{ widgetType = "checkbox", id = "weapon_cards_up", label = "Weapon cards up: prev/next weapon cards at the top right, throwable cards at the top left (shown when that hand nears its shoulder); off = under the belt", initialValue = false },
+			{ widgetType = "combo", id = "weapon_cards_show", label = "Weapon cards up: when the corner cards show", selections = {"Near shoulder or belt", "Always", "Never"}, initialValue = 1, width = 200 },
+			{ widgetType = "slider_float", id = "weapon_cards_up_x", label = "Weapon cards up: cm out to the side of the eyes", initialValue = 40.0, range = {15.0, 40.0} },
+			{ widgetType = "slider_float", id = "weapon_cards_up_y", label = "Weapon cards up: cm below the eyes", initialValue = 30.0, range = {0.0, 30.0} },
+			{ widgetType = "slider_float", id = "weapon_cards_up_z", label = "Weapon cards up: cm in front of the eyes", initialValue = 40.0, range = {5.0, 40.0} },
+			{ widgetType = "slider_float", id = "belt_3d_tilt", label = "3D belt model tilt toward your eyes: degrees", initialValue = 22.531, range = {0.0, 70.0} },
+			{ widgetType = "slider_float", id = "belt_drop", label = "Belt height: cm below your eyes", initialValue = 74.687, range = {30.0, 95.0} },
+			-- step 122 (headset 2026-11-20c): seated play = own belt height + camera raised to standing eye height
+			{ widgetType = "checkbox", id = "seated_play", label = "Seated play (own belt height, camera raised to standing height)", initialValue = false },
+			{ widgetType = "slider_float", id = "belt_drop_seated", label = "Belt height when seated: cm below your eyes", initialValue = 35.0, range = {15.0, 80.0} },
+			-- step 109: belt centre forward/back and sideways in the head-yaw frame (libs/qd_belt.lua reads them)
+			{ widgetType = "slider_float", id = "belt_fwd", label = "Belt forward: cm in front of your eyes (minus = further back)", initialValue = -2.609, range = {-25.0, 20.0} },
+			{ widgetType = "checkbox", id = "belt_body_yaw", label = "Belt turns with your body (read from your hands), not with your head", initialValue = true }, -- step 125
+			{ widgetType = "slider_float", id = "belt_side", label = "Belt sideways: cm to your right (minus = left)", initialValue = 0.0, range = {-15.0, 15.0} },
+			-- step 122 (headset 2026-11-20c): heals on the IK gloves (lower-arm frame, like the arm HUD), the other hand grabs
+			{ widgetType = "checkbox", id = "heal_gloves", label = "Healing items off the belt (weakest left, strongest right)", initialValue = true },
+			-- step 124 (headset 2026-11-21: glove heals twitched with the hands): heals hang on a chain from the IK shoulder joints
+			-- step 125 (headset 2026-11-21b: shoulder heals ignore real shoulder moves): spot combo replaces heal_on_shoulders
+			{ widgetType = "combo", id = "heal_spot", label = "Healing items hang", selections = {"Above the elbows (upper arm, past the arm HUD)", "From the shoulders", "On the gloves"}, initialValue = 1, width = 330 },
+			{ widgetType = "slider_float", id = "heal_el_fwd", label = "Left elbow heal: forward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_el_out", label = "Left elbow heal: outward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_el_up", label = "Left elbow heal: up (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_fwd", label = "Right elbow heal: forward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_out", label = "Right elbow heal: outward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_up", label = "Right elbow heal: up (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_shl_fwd", label = "Left shoulder heal: forward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_shl_out", label = "Left shoulder heal: outward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_shl_up", label = "Left shoulder heal: up (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_shr_fwd", label = "Right shoulder heal: forward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_shr_out", label = "Right shoulder heal: outward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_shr_up", label = "Right shoulder heal: up (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_gl_x", label = "Left glove heal: X (cm, across the arm)", initialValue = -8.438, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_gl_y", label = "Left glove heal: Y (cm, + = toward the elbow)", initialValue = 33.656, range = {-30.0, 40.0} },
+			{ widgetType = "slider_float", id = "heal_gl_z", label = "Left glove heal: Z (cm, + = off the arm face)", initialValue = 19.687, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_gr_x", label = "Right glove heal: X (cm, across the arm)", initialValue = 10.501, range = {-30.0, 30.0} },
+			{ widgetType = "slider_float", id = "heal_gr_y", label = "Right glove heal: Y (cm, + = toward the elbow)", initialValue = 26.875, range = {-30.0, 40.0} },
+			{ widgetType = "slider_float", id = "heal_gr_z", label = "Right glove heal: Z (cm, + = off the arm face)", initialValue = 22.625, range = {-30.0, 30.0} },
+			-- step 106: button layout (T20.remap)
+			{ widgetType = "combo", id = "button_layout", label = "Buttons: New = LT knives / pickups, left grip weapon jump, RT special attack, right grip attack / charge / fire (grabs stay on the triggers); Classic = old", selections = {"New", "Classic"}, initialValue = 1, width = 150 },
 			-- step 3: IK arms (libs/qd_ik.lua). The IK lib is only loaded when this is on at script load
 			{ widgetType = "checkbox", id = "ik_arms", label = "IK arms (experimental): arms follow your hands. Needs motion controls melee; turning it on needs a game restart", initialValue = false },
+			-- s115: libs/qd_ikfast (the IK lib itself is untouched; off = its own methods run again, live)
+			{ widgetType = "checkbox", id = "ik_fast_math", label = "IK arms: fast math (same arms, less CPU); off = the IK library's own math", initialValue = true },
 			{ widgetType = "checkbox", id = "beam_on_x", label = "Beam only while X is held (aim with the left hand, release X to pull the item in); off = beam always on", initialValue = true },
-			{ widgetType = "checkbox", id = "pickup_beam", label = "Pickup beam from the left hand to the targeted item", initialValue = true },
+			{ widgetType = "checkbox", id = "pickup_beam_ray", label = "Pickup beam from the aiming hand to the targeted item", initialValue = false },
+			{ widgetType = "checkbox", id = "pickup_right_hand2", label = "X pickups aim with the right hand and fly into it (new layout: always; classic: while X is held)", initialValue = false },
+			{ widgetType = "checkbox", id = "lever_right_hand2", label = "X on levers, switches, chests and characters: aim with the right hand", initialValue = false }, -- step 124; s131: renamed, default off (headset 2026-11-22: right-hand X fired effects twice; left hand only)
+			{ widgetType = "checkbox", id = "pickup_hide_showcase", label = "Hide the game's flat \"item comes to you\" display after a pickup (the item is already in your hand)", initialValue = true },
 			{ widgetType = "slider_float", id = "pickup_cone", label = "Pickup aim tolerance (degrees, on top of 10 cm)", initialValue = 6.0, range = {1.0, 20.0} },
 			{ widgetType = "slider_float", id = "pickup_range", label = "Pickup reach (m)", initialValue = 3.5, range = {1.0, 8.0} },
 			{ widgetType = "checkbox", id = "auto_grip", label = "Auto grip for weapons with no saved grip (computed from the weapon's shape)", initialValue = true },
@@ -243,38 +330,90 @@ local configDefinition = {
 			{ widgetType = "slider_float", id = "knife_froll", label = "Finger knives: roll", initialValue = 0.0, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "knife_fscale", label = "Finger knives: size", initialValue = 0.7, range = {0.2, 3.0} },
 			{ widgetType = "slider_int", id = "knife_fbone", label = "Finger knives: finger joint (0 = knuckle, 2 = tip)", initialValue = 0, range = {0, 2} },
-			{ widgetType = "checkbox", id = "weapon_hand_hidden", label = "Hide the right hand model while holding a weapon", initialValue = true },
+			{ widgetType = "checkbox", id = "dash_fx_hand", label = "Weapon jump effect starts at the hand that pressed it (look only; off = where the game puts it, behind your head)", initialValue = true },
+			{ widgetType = "slider_float", id = "dash_fx_fwd", label = "Weapon jump effect: cm ahead of the hand (minus = back)", initialValue = 4.0, range = {-40.0, 40.0} },
+			{ widgetType = "slider_float", id = "dash_fx_right", label = "Weapon jump effect: cm to the right of the hand (minus = left)", initialValue = 2.0, range = {-40.0, 40.0} },
+			{ widgetType = "slider_float", id = "dash_fx_up", label = "Weapon jump effect: cm above the hand (minus = below)", initialValue = 0.0, range = {-40.0, 40.0} },
+			{ widgetType = "checkbox", id = "throw_from_hand", label = "Each thrown knife leaves from the very finger knife that vanishes, not from the view centre (look only: it still hits where the crosshair is)", initialValue = true },
+			{ widgetType = "checkbox", id = "weapon_hand_hidden", label = "Hide the right hand model while holding a weapon (not with IK arms)", initialValue = true },
+			{ widgetType = "checkbox", id = "left_hand_hidden", label = "Hide the left hand model (compass, finger knives and held items stay; not with IK arms)", initialValue = false },
+			{ widgetType = "checkbox", id = "compass_level", label = "Compass stays level (follows hand position and heading, ignores hand tilt)", initialValue = false },
+			{ widgetType = "checkbox", id = "compass_left_heading", label = "Compass heading follows where the left hand points (off = the game's aim direction)", initialValue = true },
+			{ widgetType = "checkbox", id = "compass_swivel", label = "Compass on the hand turns about the hand's pointing axis to face you (wrist roll ignored)", initialValue = true },
+			{ widgetType = "slider_float", id = "compass_level_yaw", label = "Level compass turn (deg, if its text is not facing away from you)", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "checkbox", id = "compass_flip", label = "Hand hidden: compass turns to face you when seen from behind", initialValue = true },
+			-- step 74: arm HUD (libs/qd_armhud.lua) replaces the flat status panel on the left hand
+			{ widgetType = "checkbox", id = "arm_hud", label = "Arm HUD: HP / energy / power / jump-sword bars on the back of the left glove (replaces the flat panel)", initialValue = true },
+			{ widgetType = "slider_float", id = "arm_hud_x", label = "Arm HUD X", initialValue = 0.0, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "arm_hud_y", label = "Arm HUD Y", initialValue = -7.625, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "arm_hud_z", label = "Arm HUD Z", initialValue = 4.25, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "arm_hud_pitch", label = "Arm HUD pitch", initialValue = -1.125, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "arm_hud_yaw", label = "Arm HUD yaw", initialValue = 90.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "arm_hud_roll", label = "Arm HUD roll", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "checkbox", id = "arm_hud_forearm", label = "Arm HUD on the left forearm (turns with the forearm; off = back of the glove)", initialValue = true },
+			{ widgetType = "slider_float", id = "arm_hud_fa_x", label = "Forearm HUD X (cm)", initialValue = 0.0, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "arm_hud_fa_y", label = "Forearm HUD Y (cm, + = toward the elbow)", initialValue = 18.75, range = {-20, 30} },
+			{ widgetType = "slider_float", id = "arm_hud_fa_z", label = "Forearm HUD Z (cm, + = back of the forearm)", initialValue = 4.5, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "arm_hud_fa_pitch", label = "Forearm HUD pitch", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "arm_hud_fa_yaw", label = "Forearm HUD yaw", initialValue = 90.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "arm_hud_fa_roll", label = "Forearm HUD roll", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "checkbox", id = "arm_hud_upper", label = "Arm HUD on the left upper arm (doesn't roll with the wrist; wins over the forearm)", initialValue = true },
+			-- step 119: placement sliders (new ids; the old arm_hud_ua_* saved values were tuned while invisible)
+			{ widgetType = "slider_float", id = "arm_hud_lf_x", label = "Left arm HUD (lower arm by the glove): X (cm, across the arm)", initialValue = 0.0, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_lf_y", label = "Left arm HUD (lower arm by the glove): Y (cm, + = toward the elbow)", initialValue = 18.875, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_lf_z", label = "Left arm HUD (lower arm by the glove): Z (cm, + = out from the arm)", initialValue = 4.5, range = {-60.0, 60.0} },
+			{ widgetType = "slider_float", id = "arm_hud_lf_pitch", label = "Left arm HUD (lower arm by the glove): pitch", initialValue = 0.0, range = {-180.0, 180.0} },
+			{ widgetType = "slider_float", id = "arm_hud_lf_yaw", label = "Left arm HUD (lower arm by the glove): yaw", initialValue = 90.0, range = {-180.0, 180.0} },
+			{ widgetType = "slider_float", id = "arm_hud_lf_roll", label = "Left arm HUD (lower arm by the glove): roll", initialValue = 0.0, range = {-180.0, 180.0} },
+			{ widgetType = "slider_float", id = "arm_hud_len", label = "Arm HUD bar length (cm)", initialValue = 8.363, range = {3, 15} },
+			-- step 75: knives in a row along the back of the forearm instead of between the fingers
+			{ widgetType = "checkbox", id = "coin_counter", label = "Coin counter under the compass (turn the hand to see it)", initialValue = true },
+			{ widgetType = "checkbox", id = "knife_forearm", label = "Knives in a row on the glove cuff (off = between the fingers)", initialValue = true },
+			{ widgetType = "checkbox", id = "knife_row_forearm", label = "Cuff throwables follow the forearm (off = turn with the wrist)", initialValue = true },
+			{ widgetType = "slider_float", id = "knife_ax", label = "Cuff knives X", initialValue = 0.0, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "knife_ay", label = "Cuff knives Y", initialValue = 2.562, range = {-30, 30} },
+			{ widgetType = "slider_float", id = "knife_az", label = "Cuff knives Z", initialValue = 7.625, range = {-20, 20} },
+			{ widgetType = "slider_float", id = "knife_apitch", label = "Cuff knives pitch", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_ayaw", label = "Cuff knives yaw", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_aroll", label = "Cuff knives roll", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "knife_edge_gap", label = "Cuff throwables: gap between models (cm, edge to edge; -1.3 = the old knife spacing)", initialValue = 0.3, range = {-2.0, 5.0} },
+			{ widgetType = "slider_float", id = "knife_row_max", label = "Cuff throwables: longest row (cm; wider throwables shrink to fit)", initialValue = 16.0, range = {6.0, 40.0} },
+			{ widgetType = "slider_float", id = "knife_agap", label = "Cuff knives spacing (cm, centre to centre; used only when a model's size is unknown)", initialValue = 2.3, range = {0.5, 5} },
+			{ widgetType = "slider_float", id = "knife_ascale", label = "Cuff knives size", initialValue = 0.621, range = {0.1, 1.5} },
+			{ widgetType = "checkbox", id = "weapon_grip_from_game", label = "Weapon grip: fingers copy the flat game's hand pose for each weapon (only while the handle fit below is off)", initialValue = false }, -- step 126
+			{ widgetType = "checkbox", id = "weapon_grip_fit", label = "Weapon grip: fingers close around each weapon's handle (wins over the flat-pose copy above)", initialValue = true }, -- step 129
+			{ widgetType = "checkbox", id = "hand_pose_driver", label = "Hands open by default, fist on grip (off = the hands library poses)", initialValue = true },
 			{ widgetType = "checkbox", id = "weapon_grip_pose", label = "Right hand makes a full fist around a held weapon", initialValue = true },
 			{ widgetType = "checkbox", id = "hit_haptics", label = "Weapon hand vibrates when a hit lands", initialValue = true },
 			-- test 9: usable-item HUD (ConsumableHUD) on the left hand, tweak live
 			{ widgetType = "text", label = "--- Item HUD on left hand ---" },
-			{ widgetType = "slider_float", id = "item_hud_x", label = "Item HUD X (forward)", initialValue = 3.1, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "item_hud_y", label = "Item HUD Y (right)", initialValue = -4.24, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "item_hud_z", label = "Item HUD Z (up)", initialValue = 7.51, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "item_hud_pitch", label = "Item HUD pitch", initialValue = 158.0, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "item_hud_yaw", label = "Item HUD yaw", initialValue = -4.0, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "item_hud_roll", label = "Item HUD roll", initialValue = 165.0, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "item_hud_rx", label = "Item HUD extra rot about hand X (forward)", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_x", label = "Item HUD X (forward)", initialValue = 1.6, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "item_hud_y", label = "Item HUD Y (right)", initialValue = -3.24, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "item_hud_z", label = "Item HUD Z (up)", initialValue = 1.25, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "item_hud_pitch", label = "Item HUD pitch", initialValue = 94.5, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_yaw", label = "Item HUD yaw", initialValue = -22.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_roll", label = "Item HUD roll", initialValue = 180.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_rx", label = "Item HUD extra rot about hand X (forward)", initialValue = -5.625, range = {-180, 180} },
 			{ widgetType = "checkbox", id = "plain_weapon_mat", label = "Plain material on held weapon (old sway workaround)", initialValue = false },
-			{ widgetType = "slider_float", id = "compass_dx", label = "Compass offset X (cm)", initialValue = -3.28, range = {-15, 15} },
-			{ widgetType = "slider_float", id = "compass_dy", label = "Compass offset Y (cm)", initialValue = 3.47, range = {-15, 15} },
-			{ widgetType = "slider_float", id = "compass_dz", label = "Compass offset Z (cm)", initialValue = -1.12, range = {-15, 15} },
-			{ widgetType = "slider_float", id = "compass_rx", label = "Compass extra rot about hand X", initialValue = 5.6, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "compass_dx", label = "Compass offset X (cm)", initialValue = -3.281, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "compass_dy", label = "Compass offset Y (cm)", initialValue = 3.469, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "compass_dz", label = "Compass offset Z (cm)", initialValue = -1.124, range = {-15, 15} },
+			{ widgetType = "slider_float", id = "compass_rx", label = "Compass extra rot about hand X", initialValue = 5.625, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "compass_ry", label = "Compass extra rot about hand Y", initialValue = 4.5, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "compass_rz", label = "Compass extra rot about hand Z", initialValue = 20.25, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "item_hud_ry", label = "Item HUD extra rot about hand Y (right)", initialValue = 0.0, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "item_hud_rz", label = "Item HUD extra rot about hand Z (up)", initialValue = 0.0, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_ry", label = "Item HUD extra rot about hand Y (right)", initialValue = -2.25, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "item_hud_rz", label = "Item HUD extra rot about hand Z (up)", initialValue = -16.875, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "item_icon_dx", label = "Item icon nudge X (px)", initialValue = 0.0, range = {-200, 200} },
 			{ widgetType = "slider_float", id = "item_icon_dy", label = "Item icon nudge Y (px)", initialValue = 0.0, range = {-200, 200} },
-			{ widgetType = "slider_float", id = "item_hud_scale", label = "Item HUD scale", initialValue = 0.03, range = {0.005, 0.15} },
+			{ widgetType = "slider_float", id = "item_hud_scale", label = "Item HUD scale", initialValue = 0.039, range = {0.005, 0.15} },
 			-- test 7: HP HUD (StatusCluster) on the left hand, tweak live (cm / degrees, relative to the left controller)
 			{ widgetType = "text", label = "--- HP HUD on left hand ---" },
-			{ widgetType = "slider_float", id = "hp_hud_x", label = "HP HUD X (forward)", initialValue = 8.63, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "hp_hud_y", label = "HP HUD Y (right)", initialValue = 3.0, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "hp_hud_z", label = "HP HUD Z (up)", initialValue = 10.0, range = {-40, 40} },
-			{ widgetType = "slider_float", id = "hp_hud_pitch", label = "HP HUD pitch", initialValue = -178.28, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "hp_hud_yaw", label = "HP HUD yaw", initialValue = -2.0, range = {-180, 180} },
-			{ widgetType = "slider_float", id = "hp_hud_roll", label = "HP HUD roll", initialValue = -156.99, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "hp_hud_x", label = "HP HUD X (forward)", initialValue = 3.649, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "hp_hud_y", label = "HP HUD Y (right)", initialValue = 24.401, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "hp_hud_z", label = "HP HUD Z (up)", initialValue = -0.787, range = {-40, 40} },
+			{ widgetType = "slider_float", id = "hp_hud_pitch", label = "HP HUD pitch", initialValue = 95.636, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "hp_hud_yaw", label = "HP HUD yaw", initialValue = -12.558, range = {-180, 180} },
+			{ widgetType = "slider_float", id = "hp_hud_roll", label = "HP HUD roll", initialValue = -154.24, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "hp_hud_rx", label = "HP HUD extra rot about hand X (forward)", initialValue = 0.0, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "hp_hud_ry", label = "HP HUD extra rot about hand Y (right)", initialValue = 0.0, range = {-180, 180} },
 			{ widgetType = "slider_float", id = "hp_hud_rz", label = "HP HUD extra rot about hand Z (up)", initialValue = 0.0, range = {-180, 180} },
@@ -343,10 +482,10 @@ local configDefinition = {
 			{
 				widgetType = "checkbox",
 				id = "charge_on_swing",
-				label = "Hold RT to charge, swing to release",
+				label = "Hold the attack button (right grip; Classic: RT) to charge, swing to release",
 				initialValue = true
 			},
-			{ widgetType = "checkbox", id = "still_release_cancel", label = "Releasing RT without a swing cancels the charge (no attack)", initialValue = true },
+			{ widgetType = "checkbox", id = "still_release_cancel", label = "Releasing the attack button without a swing cancels the charge (no attack)", initialValue = true },
 			{ widgetType = "checkbox", id = "charge_haptics", label = "Weapon hand pulses while charging (strong at full)", initialValue = true },
 			{ widgetType = "checkbox", id = "charge_glow", label = "Weapon glows while charging (pulses at full)", initialValue = true },
 			{ widgetType = "checkbox", id = "rush_buffer", label = "Swing during a dash waits for the rush attack window", initialValue = true },
@@ -370,37 +509,157 @@ local configDefinition = {
 -- step 24 (OPTIONS_proposal.md): user-facing options grouped on top; tuning/debug under a
 -- collapsed "Developer" tree node (ids and saved values unchanged); dropped widgets removed.
 pcall(function()
+	-- step 125 (user 2026-11-21b): top = placement + status style; EVERYTHING else under "Advanced", one collapsed node
+	-- per feature (sliders shown there too). "#Title" = sub-header; "#Title|prefix" also strips prefix from the labels
+	-- below it, "#Title" alone keeps only the part after the first ": " of slider labels (short X/Y/Z names in a group).
+	-- Ids and saved values unchanged; options not listed land in the last node.
 	local GROUPS = {
-		{ "=== Combat ===", { "6dof_right", "motion_swing_speed", "motion_swing_cooldown", "charge_on_swing", "still_release_cancel", "charge_haptics", "charge_glow", "hit_haptics", "motion_hit_window", "l2_native_dodge", "l2_stab_gesture" } },
-		{ "=== Movement ===", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge" } },
-		{ "=== Items ===", { "pickup_assist", "pickup_auto_take", "beam_on_x", "pickup_beam", "belt", "item_hud", "belt_slots", "belt_heal_card", "belt_drop", "shoulder_switch" } },
-		{ "=== Aim / UI ===", { "aim_dot", "aim_dot_size", "hide_knife_model", "game_crosshair", "crosshair_size", "crosshair_brightness", "crosshair_color", "aim_ranged_right", "aim_grip_right", "crosshair_color_right", "menu_black", "menu_world_sharp", "world_detail", "world_mip_bias", "world_dither", "ui_y_offset" } },
-		{ "=== Body ===", { "weapon_hand_hidden", "weapon_grip_pose", "knife_point_pose", "ik_arms", "knife_fingers", "knife_fx", "knife_fy", "knife_fz", "knife_fpitch", "knife_fyaw", "knife_froll", "knife_fscale", "knife_fbone" } },
+		{ "Swing combat", { "6dof_right", "button_layout", "motion_swing_speed", "motion_swing_cooldown", "motion_hit_window", "hit_haptics", "still_release_cancel",
+			"charge_on_swing", "charge_haptics", "charge_glow", "rush_buffer", "rush_earliest", "l2_native_dodge", "l2_stab_gesture", "stab_outward", "stab_axis" } },
+		{ "Movement", { "rstick_turn", "rstick_turn_speed", "rstick_dodge", "disable_dodge", "roomscale" } },
+		{ "Shooting and crosshairs", { "aim_ranged_right", "ranged_hold_fire", "ranged_fire_buffer", "aim_grip_right", "crosshair_color_right",
+			"#Game crosshair|Game crosshair", "game_crosshair", "game_crosshair_gaze", "crosshair_on_top", "crosshair_bold", "crosshair_size", "crosshair_brightness", "crosshair_color" } },
+		{ "Throwing knives (left hand)", { "aim_dot", "aim_dot_size", "hide_knife_model", "knife_point_pose", "throw_from_hand", "throw_aim_pitch", "throw_aim_yaw",
+			"knife_fingers", "#Finger knives|Finger knives", "knife_fx", "knife_fy", "knife_fz", "knife_fpitch", "knife_fyaw", "knife_froll", "knife_fscale", "knife_fbone",
+			"knife_forearm", "knife_row_forearm", "#Cuff row|Cuff knives", "knife_ax", "knife_ay", "knife_az", "knife_apitch", "knife_ayaw", "knife_aroll", "knife_edge_gap", "knife_row_max", "knife_agap", "knife_ascale" } },
+		{ "Pickups and levers", { "pickup_assist", "pickup_auto_take", "pickup_auto_hold", "beam_on_x", "pickup_beam_ray", "pickup_right_hand2", "lever_right_hand2",
+			"pickup_hide_showcase", "pickup_cone", "pickup_range", "auto_grip" } },
+		{ "Belt", { "belt", "belt_body_yaw", "belt_3d", "belt_3d_size", "belt_3d_tilt", "belt_slots", "belt_heal_card", "belt_panic_heal", "belt_ammo_card", "belt_arrows",
+			"item_hud", "grab_button", "grab_point_fwd" } },
+		{ "Healing items", { "heal_gloves", "heal_spot", "#Left elbow heal", "heal_el_fwd", "heal_el_out", "heal_el_up", "#Right elbow heal", "heal_er_fwd", "heal_er_out", "heal_er_up",
+			"#Left shoulder heal", "heal_shl_fwd", "heal_shl_out", "heal_shl_up", "#Right shoulder heal", "heal_shr_fwd", "heal_shr_out", "heal_shr_up",
+			"#Left glove heal", "heal_gl_x", "heal_gl_y", "heal_gl_z", "#Right glove heal", "heal_gr_x", "heal_gr_y", "heal_gr_z" } },
+		{ "Weapon switch and cards", { "shoulder_switch", "shoulder_zone_low", "weapon_cards_up", "weapon_cards_show", "#Corner cards", "weapon_cards_up_x", "weapon_cards_up_y", "weapon_cards_up_z" } },
+		{ "Arm HUDs and charge strip", { "arm_hud", "coin_counter", "arm_hud_len", "weapon_charge_on_gun", "weapon_charge_per_weapon",
+			"#Left arm HUD (lower arm by the glove)", "arm_hud_lf_x", "arm_hud_lf_y", "arm_hud_lf_z", "arm_hud_lf_pitch", "arm_hud_lf_yaw", "arm_hud_lf_roll",
+			"#Right charge strip (lower arm by the glove)", "arm_hud_rf_x", "arm_hud_rf_y", "arm_hud_rf_z", "arm_hud_rf_pitch", "arm_hud_rf_yaw", "arm_hud_rf_roll",
+			"#Older placements", "arm_hud_upper", "arm_hud_forearm", "weapon_charge_upper", "weapon_charge_forearm",
+			"#Left forearm HUD (old)|Forearm HUD", "arm_hud_fa_x", "arm_hud_fa_y", "arm_hud_fa_z", "arm_hud_fa_pitch", "arm_hud_fa_yaw", "arm_hud_fa_roll",
+			"#Left glove HUD (old)|Arm HUD", "arm_hud_x", "arm_hud_y", "arm_hud_z", "arm_hud_pitch", "arm_hud_yaw", "arm_hud_roll",
+			"#Right forearm charge strip (old)|Forearm charge strip", "weapon_charge_fa_x", "weapon_charge_fa_y", "weapon_charge_fa_z", "weapon_charge_fa_pitch", "weapon_charge_fa_yaw", "weapon_charge_fa_roll",
+			"#Charge strip on the right controller (old)|Melee charge strip:", "weapon_charge_melee_x", "weapon_charge_melee_y", "weapon_charge_melee_z" } },
+		{ "Hands, arms and compass", { "ik_arms", "ik_fast_math", "hand_pose_driver", "weapon_grip_pose", "weapon_grip_from_game", "weapon_grip_fit", "weapon_hand_hidden", "left_hand_hidden",
+			"compass_level", "compass_left_heading", "compass_swivel", "compass_level_yaw", "compass_flip", "dash_fx_hand", "#Weapon jump effect|Weapon jump effect:", "dash_fx_fwd", "dash_fx_right", "dash_fx_up" } },
+		{ "Status effects and picture", { "status_fx_eyes", "eye_ss_off", "world_detail", "world_mip_bias", "world_dither", "menu_world_sharp", "menu_black",
+			"weapon_fov_fix", "weapon_fpfov", "weapon_depth_fix", "ui_y_offset" } },
 	}
-	local DROP = { verical_status_bar = true, plain_weapon_mat = true }
+	local DROP = { verical_status_bar = true, plain_weapon_mat = true, heal_on_shoulders = true }
 	local DEV_TEXT = { ["--- Item HUD on left hand ---"] = true, ["--- HP HUD on left hand ---"] = true }
 	local layout = configDefinition[1].layout
 	local byId, inGroup = {}, {}
 	for _, it in ipairs(layout) do if it.id ~= nil then byId[it.id] = it end end
-	for _, g in ipairs(GROUPS) do for _, id in ipairs(g[2]) do inGroup[id] = true end end
-	local out = {}
-	for _, g in ipairs(GROUPS) do
-		out[#out + 1] = { widgetType = "text", label = g[1] }
-		for _, id in ipairs(g[2]) do if byId[id] ~= nil then out[#out + 1] = byId[id] end end
+	local TOP = {
+		{ "=== Belt ===", { "belt_drop", "belt_fwd", "belt_side", "belt_body_yaw" } },
+		{ "=== Seated play ===", { "seated_play", "belt_drop_seated" } },
+		{ "=== Healing items ===", { "heal_spot", "#Left elbow heal", "heal_el_fwd", "heal_el_out", "heal_el_up", "#Right elbow heal", "heal_er_fwd", "heal_er_out", "heal_er_up" } },
+		{ "=== Arm HUDs ===", { "#Left arm HUD (health etc., lower arm by the glove)", "arm_hud_lf_x", "arm_hud_lf_y", "arm_hud_lf_z", "arm_hud_lf_pitch", "arm_hud_lf_yaw", "arm_hud_lf_roll",
+			"#Right charge strip (lower arm by the glove)", "arm_hud_rf_x", "arm_hud_rf_y", "arm_hud_rf_z", "arm_hud_rf_pitch", "arm_hud_rf_yaw", "arm_hud_rf_roll" } },
+		{ "=== Status effects ===", { "status_fx_mode", "status_acc_icons", "#Accessories under the forearm", "acc_nudge_out", "acc_nudge_elbow", "acc_nudge_across" } },
+	}
+	local TOPID = {}
+	for _, g in ipairs(TOP) do for _, id in ipairs(g[2]) do TOPID[id] = true end end
+	local function shortLabel(it, strip)
+		local lb = it.label or ""
+		if strip ~= nil then
+			if lb:sub(1, #strip) == strip then lb = lb:sub(#strip + 1):gsub("^[:%s]+", "") end
+		elseif (it.widgetType or ""):find("^slider_") ~= nil then
+			local i = lb:find(": ", 1, true)
+			if i ~= nil then lb = lb:sub(i + 2) end
+		end
+		if lb ~= "" then it.label = lb:sub(1, 1):upper() .. lb:sub(2) end
 	end
-	out[#out + 1] = { widgetType = "tree_node", id = "dev_options", label = "Developer (tuning, debug, HUD placement)", initialOpen = false }
+	local out = {}
+	-- emits a group's entries (skipping ids in skip); returns how many options it added
+	local function emit(list, skip)
+		local n, sub, strip, pend = 0, false, nil, nil
+		for _, id in ipairs(list) do
+			if id:sub(1, 1) == "#" then
+				local bar = id:find("|", 1, true)
+				pend, sub, strip = id:sub(2, (bar or 0) - 1), true, bar ~= nil and id:sub(bar + 1) or nil
+			elseif byId[id] ~= nil and not DROP[id] and not (skip ~= nil and skip[id]) then
+				inGroup[id] = true
+				if pend ~= nil then out[#out + 1] = { widgetType = "text", label = "- " .. pend .. " -" } pend = nil end
+				if sub then shortLabel(byId[id], strip) end
+				out[#out + 1] = byId[id]
+				n = n + 1
+			end
+		end
+		return n
+	end
+	for _, g in ipairs(TOP) do
+		out[#out + 1] = { widgetType = "text", label = g[1] }
+		emit(g[2], nil)
+	end
+	out[#out + 1] = { widgetType = "tree_node", id = "adv_options", label = "Advanced (all other options, by feature)", initialOpen = false }
+	for k, g in ipairs(GROUPS) do
+		local mark = #out
+		out[#out + 1] = { widgetType = "tree_node", id = "adv_g" .. k, label = g[1], initialOpen = false }
+		if emit(g[2], TOPID) == 0 then for j = #out, mark + 1, -1 do out[j] = nil end
+		else out[#out + 1] = { widgetType = "tree_pop" } end
+	end
+	out[#out + 1] = { widgetType = "tree_node", id = "dev_options", label = "Developer (debug, old HUD placement)", initialOpen = false }
 	for _, it in ipairs(layout) do
 		if it.id ~= nil then
-			if not inGroup[it.id] and not DROP[it.id] then out[#out + 1] = it end
+			if not inGroup[it.id] and not TOPID[it.id] and not DROP[it.id] then out[#out + 1] = it end
 		elseif DEV_TEXT[it.label] then
 			out[#out + 1] = it
 		end
 	end
 	out[#out + 1] = { widgetType = "tree_pop" }
-	configDefinition[1].layout = out
+	out[#out + 1] = { widgetType = "tree_pop" }
+	-- step 128 (user 2026-11-21): reset everything, behind a confirm row
+	out[#out + 1] = { widgetType = "button", id = "rst_all", label = "Reset ALL options to defaults..." }
+	out[#out + 1] = { widgetType = "text", id = "rst_all_q", label = "Reset every option in this menu, your slider placements included?", isHidden = true }
+	out[#out + 1] = { widgetType = "button", id = "rst_all_yes", label = "Yes, reset all", isHidden = true }
+	out[#out + 1] = { widgetType = "same_line", id = "rst_all_sl", isHidden = true }
+	out[#out + 1] = { widgetType = "button", id = "rst_all_no", label = "Cancel", isHidden = true }
+	-- dropped options stay defined (saved values still load) but hidden
+	for _, it in ipairs(layout) do if it.id ~= nil and DROP[it.id] then it.isHidden = true out[#out + 1] = it end end
+	-- step 128 (user 2026-11-21): a small Reset button after every user-facing slider (not in Developer)
+	T20.rstDefs, T20.rstPairs = {}, {}
+	for _, it in ipairs(layout) do
+		if it.id ~= nil and it.initialValue ~= nil and it.widgetType ~= "button" and it.widgetType ~= "small_button" then T20.rstDefs[#T20.rstDefs + 1] = it end
+	end
+	local withRst, inDev = {}, false
+	for _, it in ipairs(out) do
+		if it.id == "dev_options" then inDev = true end
+		-- step 131 (user: Reset hard to reach after long labels): button first, slider on the same line after it
+		if not inDev and it.isHidden ~= true and it.id ~= nil and it.initialValue ~= nil and (it.widgetType == "slider_float" or it.widgetType == "slider_int") then
+			withRst[#withRst + 1] = { widgetType = "small_button", id = "rst__" .. it.id, label = "Reset" }
+			withRst[#withRst + 1] = { widgetType = "same_line" }
+			T20.rstPairs[#T20.rstPairs + 1] = it
+		end
+		withRst[#withRst + 1] = it
+	end
+	configDefinition[1].layout = withRst
 end)
 
 configui.create(configDefinition)
+-- step 128: reset buttons (per slider + all, with confirm)
+pcall(function()
+	local function log(m) uevr.params.functions.log_info("[MENU] " .. m) end
+	for _, it in ipairs(T20.rstPairs or {}) do
+		local id, v = it.id, it.initialValue
+		configui.onUpdate("rst__" .. id, function()
+			local ok, err = pcall(configui.setValue, id, v)
+			log("reset " .. id .. " -> " .. tostring(v) .. (ok and "" or (" error " .. tostring(err))))
+		end)
+	end
+	local function ask(on)
+		configui.hideWidget("rst_all", on)
+		for _, k in ipairs({ "rst_all_q", "rst_all_yes", "rst_all_sl", "rst_all_no" }) do configui.hideWidget(k, not on) end
+	end
+	configui.onUpdate("rst_all", function() pcall(ask, true) end)
+	configui.onUpdate("rst_all_no", function() pcall(ask, false) end)
+	configui.onUpdate("rst_all_yes", function()
+		local n, bad = 0, 0
+		for _, it in ipairs(T20.rstDefs or {}) do
+			if pcall(configui.setValue, it.id, it.initialValue) then n = n + 1 else bad = bad + 1 end
+		end
+		pcall(ask, false)
+		log("reset ALL: " .. n .. " options to defaults" .. (bad > 0 and (", " .. bad .. " callback errors") or ""))
+	end)
+end)
 
 
 
@@ -1779,15 +2038,73 @@ end
 
 -- test 8: hide the 3D knife in the left hand (pickup code toggles RenderInMainPass too; we only touch it while it differs)
 local knifeHiddenByUs = false
+-- step 60: multi-part throwables carry extra mesh parts (blade) as children of the visuals mesh; they kept rendering
+-- on the hand while the handle was hidden. Children get the same flags (checked 4x a second: reading AttachChildren
+-- allocates, and the pickup code / a throwable switch can re-show them).
+T20.kmvKids = function(m, show)
+	local kids = m.AttachChildren
+	if kids == nil then return 0 end
+	local n = 0
+	for i = 1, #kids do
+		local c = kids[i]
+		pcall(function()
+			if c.StaticMesh == nil then return end
+			if c.bRenderInMainPass ~= show then
+				c:SetRenderInMainPass(show) c:SetRenderCustomDepth(show)
+				n = n + 1
+			end
+		end)
+	end
+	return n
+end
 function updateKnifeModelVisibility()
 	local m = activeLeftWeaponMesh
 	if m == nil then knifeHiddenByUs = false return end
+	local kidsDue = os.clock() >= (T20.kmvT or 0) or m ~= T20.kmvM
+	if kidsDue then T20.kmvT = os.clock() + 0.25 T20.kmvM = m end
 	if configui.getValue("hide_knife_model") ~= false then
 		if m.bRenderInMainPass then m:SetRenderInMainPass(false) m:SetRenderCustomDepth(false) end
+		if kidsDue then
+			local ok, n = pcall(T20.kmvKids, m, false)
+			if ok and n > 0 and T20.kmvLogged ~= m then
+				T20.kmvLogged = m
+				uevr.params.functions.log_info("[KNIFE] hidden knife model: " .. n .. " extra part(s) hidden too")
+			end
+		end
 		knifeHiddenByUs = true
 	elseif knifeHiddenByUs then
 		m:SetRenderInMainPass(true) m:SetRenderCustomDepth(true)
+		pcall(T20.kmvKids, m, true)
 		knifeHiddenByUs = false
+	end
+end
+-- step 59: hide the left hand mesh only (non-propagating: finger knives are its children). A pause hides hand +
+-- children (hands.hideHands(true)), so the children are re-shown (propagating show, then hide again in the same
+-- tick) whenever something made the hand visible, and twice a second.
+T20.lhTick = function(hide)
+	local now = os.clock()
+	if T20.lhComps == nil or now >= (T20.lhListT or 0) then
+		T20.lhListT = now + 1.0
+		T20.lhComps = hands.getHandComponentsForHand(Handed.Left)
+	end
+	local redo = now >= (T20.lhRedoT or 0)
+	if redo then T20.lhRedoT = now + 0.5 end
+	for i = 1, #T20.lhComps do
+		local c = T20.lhComps[i]
+		if uevrUtils.getValid(c) ~= nil then
+			if hide then
+				if redo or c.bVisible then
+					c:SetVisibility(true, true)
+					c:SetVisibility(false, false)
+				end
+			else
+				c:SetVisibility(true, true)
+			end
+		end
+	end
+	if hide ~= (T20.lhOn == true) then
+		T20.lhOn = hide
+		uevr.params.functions.log_info("[HAND] left hand model hidden=" .. tostring(hide) .. " comps=" .. #T20.lhComps)
 	end
 end
 
@@ -2159,6 +2476,135 @@ local function xhairPlace(hud, head, dist) -- at aimEnd, facing the head, consta
 		uevr.params.functions.log_info(string.format("[XHAIR] shown dist=%.0f scale=%.4f pickMult=%.2f", dist, s, mult))
 	end
 end
+-- step 79c (headset 2026-11-17): the left-hand throw aim runs along the fingers instead of along the controller's own
+-- forward axis (35 deg toward the palm). UEVR's controller aim has no per-hand offset (VR_ControllerPitchOffset turns
+-- both hands' poses, models and all), so while the left aim is on the script does UEVR's job itself: aim method 0, the
+-- control rotation written every tick, and UEVR's view rotation offset turned by the same yaw step so the headset view
+-- stays put (the bookkeeping of UEVR's own controller aim; maths + tests in libs/qd_throw.lua). The same direction
+-- feeds the crosshair trace. Offsets 0 / 0, a paused game or repeated failures = UEVR's left-controller aim (3) as before.
+-- Step 80 (fake headset): checks passed, shipped ON (off = true = UEVR aim 3 as
+-- before, crosshair unchanged). Self-test: QD.T20.la.off = false from the bridge; after checks a-g pass set off = false here.
+T20.la = {d = {X = 1.0, Y = 0.0, Z = 0.0}, p = 0.0, y = 0.0, cp = 0.0, cy = 0.0, cr = 0.0, q = nil, on = false, was = false, off = false,
+	fails = 0, retryT = 0.0, limT = 0.0, minP = nil, maxP = nil, wp = nil, wy = nil, chkT = 0.0, logT = 0.0, skips = 0, dbg = false}
+function T20.laWant() -- the two offsets (deg) while the offset aim is wanted and working, else nil
+	local la = T20.la
+	if la.off or T20.throw == nil or T20.throw.aimOffsets == nil or os.clock() < la.retryT then return nil end
+	local p, y = T20.throw.aimOffsets(configui.getValue("throw_aim_pitch"), configui.getValue("throw_aim_yaw"))
+	if p == 0 and y == 0 then return nil end
+	return p, y
+end
+function T20.laLimits() -- the game camera's view pitch limits: the engine clamps the control pitch to them
+	local la = T20.la
+	local pcm = api:get_player_controller(0).PlayerCameraManager
+	local lo, hi = pcm.ViewPitchMin, pcm.ViewPitchMax
+	if type(lo) == "number" and type(hi) == "number" and lo < hi and lo >= -90.0 and hi <= 90.0 then la.minP, la.maxP = lo, hi end
+end
+function T20.laDir(c, p, y) -- offset aim direction of controller c -> la.d (la.p / la.y = the control pitch / yaw for it)
+	local la = T20.la
+	if os.clock() > la.limT then
+		la.limT = os.clock() + 2.0
+		la.minP, la.maxP = nil, nil
+		pcall(T20.laLimits)
+	end
+	local r = c:K2_GetComponentRotation()
+	local d = la.d
+	la.cp, la.cy, la.cr = r.Pitch, r.Yaw, r.Roll
+	local x, yy, z = T20.throw.aimDir(la.cp, la.cy, la.cr, p, y)
+	la.p, la.y, d.X, d.Y, d.Z = T20.throw.aimRot(x, yy, z, la.minP, la.maxP)
+	return d
+end
+function T20.laDrive(p, y) -- true = aim driven this tick; false = not now (UEVR's aim this tick); raises on the unexpected
+	local la = T20.la
+	if vr.get_rotation_offset == nil or vr.set_rotation_offset == nil then la.off = true error("no view rotation offset in this UEVR") end
+	local c = controllers.getController(0, true)
+	local pc = api:get_player_controller(0)
+	if c == nil or pc == nil then return false end
+	local pcm = pc.PlayerCameraManager
+	if pcm == nil then return false end
+	local cr = pc.ControlRotation -- live view of the struct (reads are views): writes land in the controller itself
+	if cr == nil then error("player controller has no readable ControlRotation") end
+	local oldP, oldY = cr.Pitch, cr.Yaw
+	if type(oldP) ~= "number" or type(oldY) ~= "number" then return false end
+	-- the view only stays put if the game camera sits on the control rotation; another view target, a teleport frame etc.
+	-- (camera yaw far from the control yaw) = leave this tick to UEVR
+	local e = ((pcm:GetCameraRotation().Yaw - oldY + 180.0) % 360.0) - 180.0
+	if e > 25.0 or e < -25.0 then
+		la.skips = la.skips + 1
+		if os.clock() >= la.logT then
+			la.logT = os.clock() + 5.0
+			uevr.params.functions.log_info(string.format("[AIM] left offset aim waits: camera yaw %.1f deg off the control yaw (skips %d)", e, la.skips))
+		end
+		return false
+	end
+	T20.laDir(c, p, y)
+	if la.q == nil then la.q = Quaternionf.new(0, 0, 0, 0) end
+	local q = la.q
+	q:set(0, 0, 0, 0)
+	vr.get_rotation_offset(q)
+	local qx, qy, qz, qw = q.x, q.y, q.z, q.w
+	if not T20.throw.pureYaw(qx, qy, qz, qw) then
+		error(string.format("view rotation offset %s %s %s %s is not a plain yaw", tostring(qx), tostring(qy), tostring(qz), tostring(qw)))
+	end
+	local nx, ny, nz, nw = T20.throw.offsetTurn(qx, qy, qz, qw, la.y - oldY)
+	local now = os.clock()
+	cr.Pitch, cr.Yaw, cr.Roll = la.p, la.y, 0.0
+	if not la.was or now >= la.chkT then -- did the write reach the controller? (a copy instead of a view would spin the view)
+		la.chkT = now + 1.0
+		local back = pc.ControlRotation.Yaw
+		local eb = type(back) == "number" and ((back - la.y + 180.0) % 360.0) - 180.0 or 999.0
+		if eb > 0.05 or eb < -0.05 then la.off = true error("control rotation write did not stick (read back " .. tostring(back) .. ")") end
+	end
+	q:set(nx, ny, nz, nw)
+	local okS, errS = pcall(vr.set_rotation_offset, q)
+	if not okS then cr.Pitch, cr.Yaw = oldP, oldY error("set_rotation_offset: " .. tostring(errS)) end
+	vr.set_mod_value("VR_AimMethod", "0")
+	if (not la.was or la.dbg) and now >= la.logT then -- QD.T20.la.dbg = true (bridge): a line every 0.5 s
+		la.logT = now + (la.dbg and 0.5 or 5.0)
+		local dP, dY = 0.0, 0.0 -- what the game did to the last written aim (stick turn, limits)
+		if la.was and la.wp ~= nil then dP, dY = ((oldP - la.wp + 180.0) % 360.0) - 180.0, ((oldY - la.wy + 180.0) % 360.0) - 180.0 end
+		local head = controllers.getController(2)
+		uevr.params.functions.log_info(string.format("[AIM] left offset aim p=%.1f y=%.1f | ctl P%.1f Y%.1f R%.1f -> aim P%.2f Y%.2f | game had P%.2f Y%.2f (changed dP %.2f dY %.2f) | cam off %.2f | view offset %.2f -> %.2f deg | pitch limits %s..%s | head yaw %.2f | skips %d",
+			p, y, la.cp, la.cy, la.cr, la.p, la.y, oldP, oldY, dP, dY, e, math.deg(2.0 * math.atan(qy, qw)), math.deg(2.0 * math.atan(ny, nw)),
+			tostring(la.minP), tostring(la.maxP), head ~= nil and head:K2_GetComponentRotation().Yaw or -999.0, la.skips))
+	end
+	la.wp, la.wy, la.on = la.p, la.y, true
+	return true
+end
+function T20.laTick() -- from applyNormalModeSettings (left aim branch): true when the script drove the aim (method 0)
+	if regularPlayLast ~= true then return false end -- paused: nothing ticks the view; UEVR's own aim idles as before
+	local p, y = T20.laWant()
+	if p == nil then return false end
+	local ok, res = pcall(T20.laDrive, p, y)
+	if ok then return res == true end
+	local la = T20.la
+	la.fails, la.retryT = la.fails + 1, os.clock() + 5.0
+	if la.fails >= 3 then la.off = true end
+	uevr.params.functions.log_info(string.format("[AIM] left offset aim failed (%d%s): %s", la.fails, la.off and ", off for this session" or "", tostring(res)))
+	return false
+end
+-- step 80: leaving the offset aim (grip aim window, pause, failure) the view offset would be dropped by UEVR and the view
+-- would jump by that amount (seen on the fake headset: 124 deg when a grip window opened). Undo it ourselves in the same
+-- tick: offset -> identity, control yaw -> control yaw minus the offset (the head's world yaw stays put).
+function T20.laRelease()
+	local la = T20.la
+	local pc = api:get_player_controller(0)
+	if la.q == nil or pc == nil or pc.PlayerCameraManager == nil then return end
+	local cr = pc.ControlRotation
+	if cr == nil or type(cr.Yaw) ~= "number" then return end
+	local q = la.q
+	q:set(0, 0, 0, 0)
+	vr.get_rotation_offset(q)
+	local qx, qy, qz, qw = q.x, q.y, q.z, q.w
+	if not T20.throw.pureYaw(qx, qy, qz, qw) then return end
+	local e = ((pc.PlayerCameraManager:GetCameraRotation().Yaw - cr.Yaw + 180.0) % 360.0) - 180.0
+	if e > 25.0 or e < -25.0 then return end
+	local oy = math.deg(2.0 * math.atan(qy, qw))
+	q:set(0, 0, 0, 1)
+	vr.set_rotation_offset(q)
+	cr.Yaw = cr.Yaw - oy
+	la.undo = (la.undo or 0) + 1
+	if la.dbg then uevr.params.functions.log_info(string.format("[AIM] left aim released: view offset %.2f deg undone (count %d)", oy, la.undo)) end
+end
 function T20.aimDotPass(right)
 	local knife = showLaser or right
 	local hud = xhairWanted() and xhairHud() or nil
@@ -2198,7 +2644,15 @@ function T20.aimDotPass(right)
 	local loc = nil
 	pcall(function() loc = api:get_player_controller(0).PlayerCameraManager:GetCameraLocation() end)
 	if loc == nil then loc = c:K2_GetComponentLocation() end
-	local dir = kismet_math_library:GetForwardVector(c:K2_GetComponentRotation())
+	local dir = nil
+	if showLaser and not right then -- step 79c: left-hand aim along the fingers (the direction T20.laDrive gives the game)
+		local lp, ly = T20.laWant()
+		if lp ~= nil then
+			local okD, d = pcall(T20.laDir, c, lp, ly)
+			if okD then dir = d end
+		end
+	end
+	if dir == nil then dir = kismet_math_library:GetForwardVector(c:K2_GetComponentRotation()) end
 	aimStart.X, aimStart.Y, aimStart.Z = loc.X, loc.Y, loc.Z
 	aimEnd.X, aimEnd.Y, aimEnd.Z = loc.X + dir.X * AIM_MAX, loc.Y + dir.Y * AIM_MAX, loc.Z + dir.Z * AIM_MAX
 	aimIgnore[1] = api:get_local_pawn(0)
@@ -2227,6 +2681,7 @@ function T20.aimDotPass(right)
 			dist = aimHit2.Distance
 		end
 	end
+	if not right and T20.throw ~= nil then T20.throw.aim(dist) end -- step 64: distance the thrown knife merges over
 	-- test 20: a pickup target (pickup_assist) pulls the crosshair onto the item
 	if pickupSnap ~= nil and not right then
 		aimEnd.X, aimEnd.Y, aimEnd.Z = pickupSnap.X, pickupSnap.Y, pickupSnap.Z
@@ -2534,20 +2989,101 @@ end
 -- test 15: compass offset sliders (position cm in controller space + extra rotation about the hand's own axes), applied on change
 local compassKeys = {"compass_dx", "compass_dy", "compass_dz", "compass_rx", "compass_ry", "compass_rz"}
 local compassVals, compassComp = nil, nil
+-- step 65: with the left hand hidden the compass was only readable from its front side -> 10x/s check which side the
+-- camera is on; from behind, turn it 180 deg about its own up axis (same spot, reads the right way round)
+T20.cf = {flip = false, t = 0, logged = false} -- T20 fields: the main chunk is at the 200-local limit
+function T20.compassBehind(comp)
+	local cam = uevr.api:get_player_controller(0).PlayerCameraManager:GetCameraLocation()
+	local l = comp:K2_GetComponentLocation()
+	local f = comp:GetForwardVector()
+	return f.X * (cam.X - l.X) + f.Y * (cam.Y - l.Y) + f.Z * (cam.Z - l.Z) < 0
+end
+-- step 79: compass_level: dial face up, heading = controller world yaw (hand pitch/roll ignored); position stays hand-attached
+T20.cl = {Pitch = 90, Yaw = 0, Roll = 0}
+function T20.compassLevel()
+	local comp = currentCompassWidgetComponent
+	local c = controllers.getController(0)
+	if comp == nil or c == nil then return end
+	local cl = T20.cl
+	cl.Yaw = c:K2_GetComponentRotation().Yaw + 180 + (configui.getValue("compass_level_yaw") or 0)
+	comp:K2_SetWorldRotation(cl, false, reusable_hit_result, true)
+end
+-- step 89 compass_swivel: hand-attached, turned about the parent's forward (pointing) axis so its face points at the camera.
+-- T20.cs: parent + rigid face/up axes in the parent frame (set when the relative transform is written); T20.csRot reused.
+T20.cs = {par = nil, nx = 1, ny = 0, nz = 0, ux = 0, uy = 0, uz = 1, mode = nil, err = 0}
+T20.csRot = {Pitch = 0, Yaw = 0, Roll = 0}
+function T20.compassSwivel()
+	local comp, cs, ah = currentCompassWidgetComponent, T20.cs, T20.armhud
+	if comp == nil or cs.par == nil or ah == nil or ah.swivel == nil then return end
+	local f, r, u = cs.par:GetForwardVector(), cs.par:GetRightVector(), cs.par:GetUpVector()
+	local nx, ny, nz = cs.nx * f.X + cs.ny * r.X + cs.nz * u.X, cs.nx * f.Y + cs.ny * r.Y + cs.nz * u.Y, cs.nx * f.Z + cs.ny * r.Z + cs.nz * u.Z
+	local ux, uy, uz = cs.ux * f.X + cs.uy * r.X + cs.uz * u.X, cs.ux * f.Y + cs.uy * r.Y + cs.uz * u.Y, cs.ux * f.Z + cs.uy * r.Z + cs.uz * u.Z
+	local l = comp:K2_GetComponentLocation()
+	local cam = uevr.api:get_player_controller(0).PlayerCameraManager:GetCameraLocation()
+	nx, ny, nz, ux, uy, uz = ah.swivel(nx, ny, nz, ux, uy, uz, f.X, f.Y, f.Z, cam.X - l.X, cam.Y - l.Y, cam.Z - l.Z)
+	local rot = T20.csRot
+	rot.Pitch, rot.Yaw, rot.Roll = ah.axesRot(nx, ny, nz, ux, uy, uz)
+	comp:K2_SetWorldRotation(rot, false, reusable_hit_result, true)
+end
+function T20.compassSwivelRun()
+	local ok, err = pcall(T20.compassSwivel)
+	if not ok then
+		T20.cs.err = T20.cs.err + 1
+		if T20.cs.err <= 3 then pcall(meleeLog, "[COMPASS] swivel failed: " .. tostring(err)) end
+	end
+end
 function applyCompassOffset(delta)
 	if currentCompassWidgetComponent == nil then return end
-	local changed = compassComp ~= currentCompassWidgetComponent or compassVals == nil
+	local lvl = configui.getValue("compass_level") ~= false
+	local swv = not lvl and configui.getValue("compass_swivel") ~= false and T20.cs.err < 3
+	local mode = lvl and 1 or (swv and 2 or 0)
+	local changed = compassComp ~= currentCompassWidgetComponent or compassVals == nil or T20.cs.mode ~= mode
+	T20.cs.mode = mode
 	compassVals = compassVals or {0, 0, 0, 0, 0, 0}
 	for i = 1, 6 do
 		local v = configui.getValue(compassKeys[i]) or 0
 		if v ~= compassVals[i] then compassVals[i] = v changed = true end
 	end
-	if not changed then return end
+	local want = false
+	if not lvl and not swv and configui.getValue("left_hand_hidden") == true and configui.getValue("compass_flip") ~= false then
+		local cf = T20.cf
+		cf.t = cf.t + (delta or 0)
+		if cf.t >= 0.1 then
+			cf.t = 0
+			local ok, b = pcall(T20.compassBehind, currentCompassWidgetComponent)
+			-- seen from behind: flip; already flipped and seen from behind again: back
+			if ok then want = (b ~= cf.flip) else want = cf.flip end
+		else
+			want = cf.flip
+		end
+	end
+	if want ~= T20.cf.flip then
+		T20.cf.flip = want changed = true
+		if not T20.cf.logged then T20.cf.logged = true pcall(meleeLog, "[COMPASS] flipped to face the camera: " .. tostring(want)) end
+	end
+	if not changed then
+		if lvl then pcall(T20.compassLevel) elseif swv then T20.compassSwivelRun() end
+		return
+	end
 	compassComp = currentCompassWidgetComponent
 	local c = compassVals
+	local rot = hudRotation(203.41, -130.34, 84.8, c[4], c[5], c[6])
+	if T20.cf.flip then
+		local bx, by, bz, bw = rotToQuat(rot.Pitch, rot.Yaw, rot.Roll)
+		local fx, fy, fz, fw = rotToQuat(0, 180, 0)
+		rot = quatToRot(qmul(bx, by, bz, bw, fx, fy, fz, fw)) -- local yaw 180 = about the widget's own up axis
+	end
 	uevrUtils.set_component_relative_transform(currentCompassWidgetComponent,
-		{X = 7.460 + c[1], Y = -2.280 + c[2], Z = 0.210 + c[3]},
-		hudRotation(203.41, -130.34, 84.8, c[4], c[5], c[6]), {0.01, 0.01, 0.01})
+		{X = 7.460 + c[1], Y = -2.280 + c[2], Z = 0.210 + c[3]}, rot, {0.01, 0.01, 0.01})
+	if swv then
+		pcall(function()
+			local cs, ah = T20.cs, T20.armhud
+			cs.par = currentCompassWidgetComponent:GetAttachParent()
+			cs.nx, cs.ny, cs.nz, cs.ux, cs.uy, cs.uz = ah.rotAxes(rot.Pitch, rot.Yaw, rot.Roll)
+			pcall(meleeLog, "[COMPASS] swivel on, parent " .. tostring(cs.par ~= nil and cs.par:get_full_name() or nil))
+		end)
+	end
+	if lvl then pcall(T20.compassLevel) elseif swv then T20.compassSwivelRun() end
 end
 
 -- test 15: base (plain) material on the held weapon mesh: the game's equipment material shifts vertices with the view (sword/spear drifted off the hitbox)
@@ -2657,6 +3193,49 @@ function T20.spTick()
 		end
 	end
 end
+-- step 123 (headset 2026-11-20d: "effects look different in the two eyes on walls", probably shine): screen-space
+-- effects ray-march each eye's own depth/colour image -> they differ between the eyes. Test 91: the game already runs
+-- r.SSR.Quality 0 and AO 0; still on: r.ContactShadows 1 (screen-space ray march) -> option eye_ss_off (default on)
+-- sets both to 0, checked 1/s; off restores the values seen first. Logs the screen-space cvars once.
+T20.ss = {t = 0, logged = false, applied = false, names = { "r.SSR.Quality", "r.ContactShadows" }, vars = {}, game = {}}
+function T20.ssTick()
+	local f = T20.ss
+	local now = os.clock()
+	if now < f.t then return end
+	f.t = now + 1.0
+	local on = configui.getValue("eye_ss_off") ~= false
+	if not on and not f.applied then return end
+	local cm = uevr.api:get_console_manager()
+	if not f.logged then
+		f.logged = true
+		local parts = {}
+		for _, n in ipairs({ "r.SSR.Quality", "r.AmbientOcclusionLevels", "r.ContactShadows", "r.LightShaftQuality", "r.SSGI.Enable", "r.DFShadowQuality", "r.VolumetricFog" }) do
+			local v = cm:find_variable(n)
+			local okV, val = pcall(function() return v ~= nil and v:get_int() or nil end)
+			parts[#parts + 1] = n .. "=" .. tostring(okV and val or "?")
+		end
+		uevr.params.functions.log_info("[EYES] screen-space cvars: " .. table.concat(parts, " "))
+	end
+	for i = 1, #f.names do
+		local n = f.names[i]
+		if f.vars[i] == nil then f.vars[i] = cm:find_variable(n) end
+		local var = f.vars[i]
+		if var ~= nil then
+			local q = var:get_int()
+			if f.game[i] == nil then f.game[i] = q end
+			local want = on and 0 or f.game[i]
+			if q ~= want then
+				local ksl = uevrUtils.find_default_instance("Class /Script/Engine.KismetSystemLibrary")
+				local pc = api:get_player_controller(0)
+				if ksl ~= nil and pc ~= nil then
+					ksl:ExecuteConsoleCommand(uevrUtils.get_world(), string.format("%s %d", n, want), pc)
+					uevr.params.functions.log_info(string.format("[EYES] %s %d -> %d", n, q, want))
+				end
+			end
+		end
+	end
+	f.applied = on
+end
 -- step 51 (world_detail): the game's graphics options for texture mip offset / dither can't be changed in its menu.
 -- Mip offset = cvar r.MipMapLODBias (game -0.5); dither = PixelFilter_MPC scalar EnableDither (1; DitherStrength 64).
 -- Checked 1/s and re-applied when different (console write for the cvar); off puts back the values seen first.
@@ -2681,7 +3260,7 @@ function T20.wdTick()
 	if f.gameDither == nil and type(dith) == "number" then f.gameDither = dith end
 	local wantBias, wantDither
 	if on then
-		wantBias = configui.getValue("world_mip_bias") or -1.5
+		wantBias = configui.getValue("world_mip_bias") or 1.0
 		wantDither = configui.getValue("world_dither") == true and (f.gameDither or 1.0) or 0.0
 	else
 		wantBias, wantDither = f.gameBias, f.gameDither
@@ -2738,6 +3317,172 @@ function T20.fpdExtra(on)
 	end
 	if activeLeftWeaponMesh ~= nil then pcall(T20.fpdMesh, activeLeftWeaponMesh, on) end
 end
+-- step 68: the weapon-charge strip (the heavy rifle's alt-fire shells; melee charges on other weapons) sits in the
+-- left-hand status cluster. While a shooting weapon is held it moves onto the gun (WidgetComponent attached to the
+-- right controller, seen on top of the heavy rifle 2026-11-16: 10 cm forward, 22 cm up, facing back); otherwise it goes back into the
+-- cluster's box (it is that box's last child, so AddChild restores the order). Option weapon_charge_on_gun.
+T20.wch = {t = 0, onGun = false}
+-- step 103: melee strip spot per weapon class (data/qd_charge_strip.json). Moving a slider while holding a melee weapon
+-- stores the spot for that weapon; switching to a weapon with a stored spot sets the sliders to it. Option weapon_charge_per_weapon.
+T20.wcm = {map = nil, cw = nil, cls = nil}
+function T20.wchMem(cw, x, y, z)
+	if cw == nil or configui.getValue("weapon_charge_per_weapon") == false then return nil end
+	local M = T20.wcm
+	if M.map == nil then
+		local ok, t = pcall(json.load_file, "qd_charge_strip.json")
+		M.map = (ok and type(t) == "table") and t or {}
+	end
+	if cw ~= M.cw then
+		M.cw = cw
+		M.cls = cw:get_class():get_fname():to_string()
+		local e = M.map[M.cls]
+		if type(e) == "table" and type(e[1]) == "number" and type(e[2]) == "number" and type(e[3]) == "number" then
+			x, y, z = e[1], e[2], e[3]
+			configui.setValue("weapon_charge_melee_x", x, true)
+			configui.setValue("weapon_charge_melee_y", y, true)
+			configui.setValue("weapon_charge_melee_z", z, true)
+			uevr.params.functions.log_info(string.format("[WCHARGE] stored strip spot for this weapon: %.0f %.0f %.0f", x, y, z))
+		end
+		M.ax, M.ay, M.az = x, y, z
+		return x, y, z
+	end
+	if x ~= M.ax or y ~= M.ay or z ~= M.az then
+		M.ax, M.ay, M.az = x, y, z
+		M.map[M.cls] = {x, y, z}
+		pcall(json.dump_file, "qd_charge_strip.json", M.map, 4)
+		uevr.params.functions.log_info(string.format("[WCHARGE] strip spot saved for %s: %.0f %.0f %.0f", M.cls, x, y, z))
+	end
+	return x, y, z
+end
+function T20.wchTick(dt)
+	-- step 72: with the option on, the strip leaves the status cluster at first sight and stays in its own
+	-- WidgetComponent on the right controller (shown only with a shooting weapon), so it never flashes in the flat UI
+	local W = T20.wch
+	W.t = W.t + (dt or 0)
+	if W.out and W.t < 0.25 then return end
+	W.t = 0
+	local pw = api:get_local_pawn(0)
+	local hud = pw ~= nil and pw.HUD ~= nil and pw.HUD.StatusCluster ~= nil and pw.HUD.StatusCluster.WeaponChargeHUD or nil
+	if hud == nil then return end
+	if W.hud ~= nil and W.hud ~= hud then W.out = false W.comp = nil W.attached = nil W.vis = nil W.parent = nil end -- new HUD (level change)
+	W.hud = hud
+	local opt = configui.getValue("weapon_charge_on_gun") ~= false
+	if opt and not W.out then
+		W.box = hud:GetParent()
+		pcall(function() local sl = hud.Slot W.pad, W.size, W.ha, W.va = sl.Padding, sl.Size, sl.HorizontalAlignment, sl.VerticalAlignment end)
+		hud:RemoveFromParent()
+		if W.comp == nil or uevrUtils.getValid(W.comp) == nil then
+			W.comp = uevrUtils.createWidgetComponent(hud, {manualAttachment = false, removeFromViewport = true, twoSided = true, drawSize = vector_2(300, 120)})
+		else
+			W.comp:SetWidget(hud)
+		end
+		if W.attached ~= W.comp then -- right controller: the gun mesh pivot sits far below the gun (heavy rifle ~78 cm under the eye)
+			controllers.attachComponentToController(1, W.comp, "", nil, nil, true)
+			W.attached, W.parent = W.comp, "ctl"
+		end
+		W.px = nil -- placement applied below
+		W.out, W.vis = true, nil
+		uevr.params.functions.log_info("[WCHARGE] charge strip out of the status cluster (kept on the right controller)")
+	elseif not opt and W.out then
+		W.out, W.vis = false, nil
+		pcall(function() W.comp:SetWidget(nil) W.comp:SetVisibility(false, true) end)
+		if W.box ~= nil then
+			local sl = W.box:AddChild(hud)
+			pcall(function()
+				if W.pad ~= nil then sl:SetPadding(W.pad) end
+				if W.size ~= nil then sl:SetSize(W.size) end
+				if W.ha ~= nil then sl:SetHorizontalAlignment(W.ha) end
+				if W.va ~= nil then sl:SetVerticalAlignment(W.va) end
+			end)
+		end
+		uevr.params.functions.log_info("[WCHARGE] charge strip back in the status cluster")
+	end
+	if W.out then
+		-- s79d: strip shown when the held weapon has charges (GetMaxCharges, re-read on weapon change; melee too, e.g. the
+		-- upgraded spear); if the getter fails, old rule (shooting weapon held). Melee gets its own spot (sliders).
+		local cw = pw.CurrentInHandWeapon
+		if cw ~= W.cw then
+			W.cw, W.mc = cw, nil
+			if cw ~= nil then
+				pcall(function()
+					local ot = {} -- step 80: the count comes back in the out table (result), not as a return value
+					cw:GetMaxCharges(ot)
+					local r = ot.result
+					if type(r) ~= "number" then r = ot.Charges end
+					if type(r) == "number" then W.mc = r end
+				end)
+			end
+		end
+		local ranged = T20.rrOn == true
+		local vis = activeWeaponMesh ~= nil and ((W.mc ~= nil and W.mc > 0) or ranged) -- s81: shooting weapons report 0 charges but still show the strip
+		local mx, my, mz = 10, 0, 22
+		if not ranged then
+			mx = tonumber(configui.getValue("weapon_charge_melee_x")) or 0
+			my = tonumber(configui.getValue("weapon_charge_melee_y")) or 0
+			mz = tonumber(configui.getValue("weapon_charge_melee_z")) or 12
+			local okM, a, b, c = pcall(T20.wchMem, cw, mx, my, mz)
+			if okM and a ~= nil then mx, my, mz = a, b, c end
+		end
+		-- step 114 (headset 2026-11-19): melee strip on the right forearm anchor (turns with the forearm), own sliders
+		-- step 117 (headset 2026-11-19c): upper arm (no wrist roll, always readable) wins over the forearm
+		local anchor, upper = nil, false
+		-- step 120 (user 2026-11-20): guns too (one place for the strip, same arm_hud_r_* sliders)
+		if vis and T20.armhud ~= nil and configui.getValue("weapon_charge_upper") ~= false then
+			local okH, rh = pcall(function() return hands.getHandComponent(Handed.Right) end)
+			local okA, an = pcall(T20.armhud.upperAnchor, 1, okH and rh or nil)
+			if okA and an ~= nil then anchor, upper = an, true end
+			pcall(T20.armhud.foreRelease, 1)
+		elseif vis and not ranged and T20.armhud ~= nil and configui.getValue("weapon_charge_forearm") ~= false then
+			local okH, rh = pcall(function() return hands.getHandComponent(Handed.Right) end)
+			if okH and rh ~= nil then
+				local okA, an = pcall(T20.armhud.foreAnchor, 1, rh)
+				if okA then anchor = an end
+			end
+			pcall(T20.armhud.upperRelease, 1)
+		elseif T20.armhud ~= nil then
+			pcall(T20.armhud.foreRelease, 1)
+			pcall(T20.armhud.upperRelease, 1)
+		end
+		local parent = anchor or "ctl"
+		if W.parent ~= parent then
+			local okP = pcall(function()
+				if anchor ~= nil then W.comp:K2_AttachToComponent(anchor, uevrUtils.fname_from_string(""), 0, 0, 0, false)
+				else controllers.attachComponentToController(1, W.comp, "", nil, nil, true) end
+			end)
+			W.parent, W.px = okP and parent or nil, nil
+			uevr.params.functions.log_info("[WCHARGE] charge strip parent: " .. (upper and "right lower arm (IK)" or anchor ~= nil and "right forearm" or "right controller") .. " ok=" .. tostring(okP))
+		end
+		local rp, ry, rr = 0, 180, 0
+		if upper then
+			-- step 118 defaults (anchor face Z turns to the eyes); step 119 (user 2026-11-20): sliders again
+			-- step 121 (user 2026-11-20): the anchor rides the IK lower arm near the glove; new ids (arm_hud_r_* stale)
+			local u = T20.armhud.LOWER_R_DEFAULTS
+			mx = tonumber(configui.getValue("arm_hud_rf_x")) or u.x
+			my = tonumber(configui.getValue("arm_hud_rf_y")) or u.y
+			mz = tonumber(configui.getValue("arm_hud_rf_z")) or u.z
+			rp = tonumber(configui.getValue("arm_hud_rf_pitch")) or u.pitch
+			ry = tonumber(configui.getValue("arm_hud_rf_yaw")) or u.yaw
+			rr = tonumber(configui.getValue("arm_hud_rf_roll")) or u.roll
+		elseif anchor ~= nil then
+			mx = tonumber(configui.getValue("weapon_charge_fa_x")) or 0
+			my = tonumber(configui.getValue("weapon_charge_fa_y")) or 12
+			mz = tonumber(configui.getValue("weapon_charge_fa_z")) or 4.5
+			rp = tonumber(configui.getValue("weapon_charge_fa_pitch")) or 90
+			ry = tonumber(configui.getValue("weapon_charge_fa_yaw")) or 0
+			rr = tonumber(configui.getValue("weapon_charge_fa_roll")) or 0
+		end
+		if W.px ~= mx or W.py ~= my or W.pz ~= mz or W.rp ~= rp or W.ry ~= ry or W.rr ~= rr then
+			W.px, W.py, W.pz, W.rp, W.ry, W.rr = mx, my, mz, rp, ry, rr
+			pcall(uevrUtils.set_component_relative_transform, W.comp, {X = mx, Y = my, Z = mz}, {Pitch = rp, Yaw = ry, Roll = rr}, {0.1, 0.1, 0.1})
+		end
+		if vis ~= W.vis then
+			W.vis = vis
+			pcall(function() W.comp:SetVisibility(vis, true) end)
+			uevr.params.functions.log_info("[WCHARGE] charge strip on the gun: " .. tostring(vis))
+		end
+	end
+end
+
 function T20.fpdTick(force)
 	local f = T20.fpd
 	local m = activeWeaponMesh
@@ -2918,7 +3663,13 @@ function T20.cleanupStale()
 				if (nm == "StaticMesh /Engine/BasicShapes/Cylinder.Cylinder" or nm == "StaticMesh /Engine/BasicShapes/Sphere.Sphere") and c:GetCollisionEnabled() == 0 then -- Sphere: the orange aim dot (s4)
 					local m = c:GetMaterial(0) -- our beam: a dynamic instance of the engine debug mesh material
 					local parent = m ~= nil and m.Parent or nil
-					stale = parent ~= nil and string.find(parent:get_full_name(), "DebugMeshMaterial", 1, true) ~= nil
+					stale = parent ~= nil and (string.find(parent:get_full_name(), "DebugMeshMaterial", 1, true) ~= nil or string.find(parent:get_full_name(), "BasicShapeMaterial", 1, true) ~= nil) -- step 82: belt3d tie cylinders too
+				elseif (nm == "StaticMesh /Engine/BasicShapes/Cube.Cube" or nm == "StaticMesh /Engine/BasicShapes/Cylinder.Cylinder") and c:GetMaterial(0) ~= nil
+					and c:GetMaterial(0).Parent ~= nil and string.find(c:GetMaterial(0).Parent:get_full_name(), "BasicShapeMaterial", 1, true) ~= nil then
+					stale = true -- step 82: belt3d strap / tie shapes (own actor)
+				elseif c.bReverseCulling == true and c.GetMaterial ~= nil and c:GetMaterial(0) ~= nil and c:GetMaterial(0).Parent ~= nil
+					and string.find(c:GetMaterial(0).Parent:get_full_name(), "BasicShapeMaterial", 1, true) ~= nil then
+					stale = true -- step 82: belt3d outline hull (reverse-culled copy of an item model)
 				elseif nm == "StaticMesh /Engine/BasicShapes/Cube.Cube" then
 					local m = c:GetMaterial(0)
 					stale = m ~= nil and string.find(m:get_full_name(), "WireframeMaterial", 1, true) ~= nil
@@ -2948,9 +3699,45 @@ function T20.rrTick(delta)
 		local it = w ~= nil and w.ItemData or nil
 		if it ~= nil then on = it["Consumes Battery"] == true end
 	end
+	if on then pcall(T20.gunNoCollide) end -- step 127b
 	if on ~= T20.rrOn then
 		T20.rrOn = on
 		uevr.params.functions.log_info("[RANGED] right-hand ranged weapon: " .. tostring(on))
+		if not on and T20.rrHeldFlag then T20.rrHeldFlag = false pcall(function() uevr.api:get_local_pawn(0).AttackPressed = false end) end
+	end
+end
+-- step 127b (headset 2026-11-21c, user: gun shots did no damage, the projectile hit the gun): the shot spawns at the
+-- game's camera rig, not the muzzle, and the held gun mesh (own visuals actor, not ignored like the pawn) sits in its
+-- path. Every 0.5 s while a ranged weapon is held: collision off on the held mesh and its attached parts (once per
+-- component address; logs what was on).
+T20.gunCol = {}
+function T20.gunNoCollide()
+	local m = activeWeaponMesh
+	if m == nil or uevrUtils.getValid(m) == nil then return end
+	local function off(c)
+		local a = c:get_address()
+		if T20.gunCol[a] then return end
+		T20.gunCol[a] = true
+		local okE, was = pcall(function() return c:GetCollisionEnabled() end)
+		if okE and was ~= nil and was ~= 0 then
+			local okP, prof = pcall(function() return c:GetCollisionProfileName():to_string() end)
+			c:SetCollisionEnabled(0)
+			uevr.params.functions.log_info(string.format("[RANGED] gun part %s collision off (was %s, profile %s)",
+				c:get_fname():to_string(), tostring(was), okP and tostring(prof) or "?"))
+		end
+	end
+	pcall(off, m)
+	-- step 130 (headset 21e, user: shotgun alt shot "does not collide"): the charging alt-fire projectile attaches to the
+	-- gun mesh; only switch off parts owned by the gun's own actor
+	local okO, own = pcall(function() return m:GetOwner() end)
+	local oa = okO and own ~= nil and own:get_address() or nil
+	local kids = m.AttachChildren
+	if kids ~= nil and oa ~= nil then
+		for i = 1, #kids do
+			local k = kids[i]
+			local okK, ko = pcall(function() return k:GetOwner() end)
+			if okK and ko ~= nil and ko:get_address() == oa then pcall(off, k) end
+		end
 	end
 end
 T20.RR_THROW_S = 0.9   -- left aim kept this long after a left grip press
@@ -2960,10 +3747,41 @@ T20.RR_LB_DELAY = 0.06 -- the press reaches the game this much later (aim method
 -- RB here already excludes grips swallowed by the shoulder switch / belt (early callbacks above).
 T20.RG_AIM_S = 0.9
 T20.RG_HOLD_S = 0.3
+-- step 106 (headset 2026-11-18): button layout. New (default): LT = knife throw / pickup grab (game LB), left grip =
+-- game RB (weapon jump), RT = special / alt (the classic L2 path), right grip = attack / charge / fire (the classic RT
+-- path). Runs in the early callback after the shoulder / belt grabs (they use the physical same-hand trigger and zero
+-- it) and before everything else, so the rest keeps reading the classic pad. Regular play only (menus get the real pad).
+-- T20.phys = the physical buttons (captured before the grabs) for the hand poses.
+T20.phys = { lb = false, rb = false, lt = 0, rt = 0, on = false }
+T20.rmLT = false
+function T20.physCapture(g)
+	local P = T20.phys
+	P.lb = (g.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+	P.rb = (g.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
+	P.lt, P.rt = g.bLeftTrigger, g.bRightTrigger
+end
+function T20.remap(state)
+	local g = state.Gamepad
+	local P = T20.phys
+	if normalPlay ~= true or configui.getValue("button_layout") == 2 then P.on = false T20.rmLT = false return end
+	local b = g.wButtons
+	local lb = (b & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+	local rb = (b & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
+	local lt, rt = g.bLeftTrigger, g.bRightTrigger
+	T20.rmLT = lt > 200 or (T20.rmLT and lt > 100)
+	b = b & ~(XINPUT_GAMEPAD_LEFT_SHOULDER | XINPUT_GAMEPAD_RIGHT_SHOULDER)
+	if T20.rmLT then b = b | XINPUT_GAMEPAD_LEFT_SHOULDER end
+	if lb then b = b | XINPUT_GAMEPAD_RIGHT_SHOULDER end
+	g.wButtons = b
+	g.bLeftTrigger = rt
+	g.bRightTrigger = rb and 255 or 0
+	if not P.on then P.on = true uevr.params.functions.log_info("[LAYOUT] new button layout active") end
+end
 function T20.rgXInput(g, now)
 	local rb = (g.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
 	local prev = T20.rgPrev
 	T20.rgPrev = rb
+	if T20.phys.on then return end -- step 106: the jump comes from the left grip now (rrXInput aims it with the left hand)
 	if T20.rrOn == true or configui.getValue("aim_grip_right") == false then return end
 	if rb and not prev then
 		T20.rgAimT = now + T20.RG_AIM_S
@@ -2979,16 +3797,27 @@ end
 function T20.rrXInput(state)
 	local g = state.Gamepad
 	local now = os.clock()
+	-- step 112: weapon jump (game RB) -> its dash effect is pinned to the pressing hand (left in the new layout)
+	local rbV = (g.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
+	if rbV and not T20.dfPrev and T20.throw ~= nil and T20.throw.dashArm ~= nil then pcall(T20.throw.dashArm, T20.phys.on and 0 or 1) end
+	T20.dfPrev = rbV
 	pcall(T20.rgXInput, g, now)
+	-- step 64: any left-grip press may be a throw -> the throw module notes which projectiles already exist
+	local lbRaw = (g.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+	if lbRaw and not T20.tfLbPrev and T20.throw ~= nil then pcall(T20.throw.arm) end
+	T20.tfLbPrev = lbRaw
 	if T20.rrOn ~= true then T20.rrLbPrev = false return end
-	local lb = (g.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+	-- step 106: in the new layout the weapon jump (game RB) comes from the left grip -> left-hand aim like a throw
+	local mask = XINPUT_GAMEPAD_LEFT_SHOULDER
+	if T20.phys.on then mask = mask | XINPUT_GAMEPAD_RIGHT_SHOULDER end
+	local lb = (g.wButtons & mask) ~= 0
 	if lb and not T20.rrLbPrev then
 		T20.rrThrowT = now + T20.RR_THROW_S
 		T20.rrLbUntil = now + T20.RR_LB_DELAY
 		pcall(function() vr.set_mod_value("VR_AimMethod", "3") end)
 	end
 	T20.rrLbPrev = lb
-	if lb and now < (T20.rrLbUntil or 0) then g.wButtons = g.wButtons & ~XINPUT_GAMEPAD_LEFT_SHOULDER end
+	if lb and now < (T20.rrLbUntil or 0) then g.wButtons = g.wButtons & ~mask end
 end
 
 function applyNormalModeSettings(delta)
@@ -3010,13 +3839,16 @@ function applyNormalModeSettings(delta)
 	-- step 54: right-hand ranged weapon -> right controller aims (2), except just after a left grip (throw window)
 	local rrAim = T20.rrOn == true and os.clock() >= (T20.rrThrowT or 0)
 	if os.clock() < (T20.rgAimT or 0) then rrAim = true end -- step 57: right grip move window
+	T20.la.was, T20.la.on = T20.la.on, false -- step 79c: set again by T20.laTick while it drives the left aim
 	if nativeDodgeAimLeft > 0 then
 		vr.set_mod_value("VR_AimMethod", "1") -- test 9: HMD aim while the native dodge plays
 	elseif rrAim then
 		vr.set_mod_value("VR_AimMethod", "2")
 		if showLaser and currentCompass ~= nil and not aimDotEnabled() then currentCompassWidgetComponent:SetVisibility(false, true) end
 	elseif showLaser then
-		vr.set_mod_value("VR_AimMethod", "3")
+		-- step 79c: aim along the fingers = method 0 + the script's own control rotation (T20.laTick); else UEVR's left aim
+		local okL, drove = pcall(T20.laTick)
+		if not (okL and drove == true) then vr.set_mod_value("VR_AimMethod", "3") end
 		if currentCompass ~= nil and not aimDotEnabled() then -- test 7: compass hidden only when the visible laser is on
 			currentCompassWidgetComponent:SetVisibility(false, true)
 		end
@@ -3027,6 +3859,7 @@ function applyNormalModeSettings(delta)
 			currentCompassWidgetComponent:SetVisibility(true, true)
 		end
 	end
+	if T20.la.was and not T20.la.on then pcall(T20.laRelease) end -- step 80
 	vr.set_mod_value("VR_RoomscaleMovement", configui.getValue("roomscale") == false and "0" or "1") -- test 8: A/B toggle
 	vr.set_mod_value("VR_MovementOrientation", "1") -- 1 = HMD (0 = follows aim method / hand)
 	vr.set_mod_value("VR_DecoupledPitch", "1")
@@ -3103,12 +3936,19 @@ function applyNormalModeSettings(delta)
 		populateCurrentLevelPickables()
 	end
 	-- step 35: the right hand model sat on top of the weapon grip -> hidden while a melee weapon is held (option weapon_hand_hidden)
-	if configui.getValue("weapon_hand_hidden") ~= false and activeWeaponMesh ~= nil then
-		hands.hideHand(Handed.Left, false)
+	-- step 59: left_hand_hidden hides only the left hand mesh itself (T20.lhTick), so the per-frame show skips it
+	-- step 104 (user 2026-11-18): with IK arms the gloves always show, so the arm never ends in a stump
+	local ikH = T20.ik ~= nil and configui.getValue("ik_arms") == true
+	local lhHide = configui.getValue("left_hand_hidden") == true and not ikH
+	if configui.getValue("weapon_hand_hidden") ~= false and activeWeaponMesh ~= nil and not ikH then
+		if not lhHide then hands.hideHand(Handed.Left, false) end
 		hands.hideHand(Handed.Right, true)
+	elseif lhHide then
+		hands.hideHand(Handed.Right, false)
 	else
 		hands.hideHands(false)
 	end
+	if lhHide or T20.lhOn then pcall(T20.lhTick, lhHide) end
 	
 	--[[local game_engine_class = api:find_uobject("Class /Script/Engine.GameEngine")
 	local game_engine = UEVR_UObjectHook.get_first_object_by_class(game_engine_class)
@@ -3139,6 +3979,8 @@ function applyNormalModeSettings(delta)
 	pcall(applyCompassOffset, delta)
 	plainMatT = (plainMatT or 0) + (delta or 0)
 	if plainMatT > 1 then plainMatT = 0 applyPlainWeaponMaterial() pcall(T20.fpdTick, true) else pcall(T20.fpdTick, false) end
+	local okW, errW = pcall(T20.wchTick, delta)
+	if not okW and not T20.wchErr then T20.wchErr = true uevr.params.functions.log_info("[WCHARGE] error " .. tostring(errW)) end
 	pcall(hmdFollowDiag, delta)
 	pcall(hmdPosDiag, delta)
 	pcall(updateKnifeModelVisibility)
@@ -3159,6 +4001,7 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	local aimOk, aimErr = pcall(updateAimDot) -- hides itself when showLaser is false (menus/cutscenes clear it)
 	if not aimOk and aimErr ~= lastAimErr then lastAimErr = aimErr uevr.params.functions.log_info("[XHAIR] updateAimDot error: " .. tostring(aimErr)) end
 	do local okW, errW = pcall(T20.wdTick) if not okW and not T20.wdErr then T20.wdErr = true uevr.params.functions.log_info("[WDETAIL] error: " .. tostring(errW)) end end
+	do local okE, errE = pcall(T20.ssTick) if not okE and not T20.ssErr then T20.ssErr = true uevr.params.functions.log_info("[EYES] error: " .. tostring(errE)) end end -- step 123
 	pcall(T20.spTick) -- every tick incl. menus (the 3D-preview menus are where the game drops the cvar)
 	regularPlayLast = false
 	T20.ikPlay = false
@@ -3179,6 +4022,12 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 		applyNormalModeSettings(delta)
 	end
 	pcall(T20.mbTick, menuNow)
+	-- step 3: IK arms (step 123: before the belt, so the glove heals read this frame's IK pose): only with the option and motion controls on; hidden outside regular play
+	if T20.ik ~= nil then
+		T20.ik.FAST = configui.getValue("ik_fast_math") ~= false
+		local okI, errI = pcall(T20.ik.tick, configui.getValue("ik_arms") == true and configui.getValue("6dof_right") == true, T20.ikPlay == true, delta)
+		if not okI and not T20.ikErr then T20.ikErr = true uevr.params.functions.log_info("[IK] error: " .. tostring(errI)) end
+	end
 	-- test 21: consumable belt (libs/qd_belt.lua), regular unpaused play only
 	if T20.belt ~= nil then
 		local okB, errB = pcall(regularPlayLast and T20.belt.tick or T20.belt.hideAll, delta)
@@ -3192,10 +4041,30 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 		local okK, errK = pcall(T20.knives.tick, delta, regularPlayLast == true and configui.getValue("6dof_right") == true)
 		if not okK and not T20.knivesErr then T20.knivesErr = true uevr.params.functions.log_info("[KNIFE] error: " .. tostring(errK)) end
 	end
-	-- step 3: IK arms: only with the option and motion controls on; hidden outside regular play
-	if T20.ik ~= nil then
-		local okI, errI = pcall(T20.ik.tick, configui.getValue("ik_arms") == true and configui.getValue("6dof_right") == true, T20.ikPlay == true, delta)
-		if not okI and not T20.ikErr then T20.ikErr = true uevr.params.functions.log_info("[IK] error: " .. tostring(errI)) end
+	if T20.throw ~= nil then pcall(T20.throw.tick, regularPlayLast == true) end -- step 64
+	if T20.gamegrip ~= nil then -- step 126
+		local okG, errG = pcall(T20.gamegrip.tick, delta, configui.getValue("weapon_grip_from_game") ~= false and configui.getValue("weapon_grip_fit") == false and configui.getValue("hand_pose_driver") ~= false)
+		if not okG and not T20.gamegripErr then T20.gamegripErr = true uevr.params.functions.log_info("[GRIP] error: " .. tostring(errG)) end
+	end
+	if T20.fingerfit ~= nil then -- step 129: wins over the flat-pose copy (gamegrip gated off)
+		local okF, errF = pcall(T20.fingerfit.tick, delta, configui.getValue("weapon_grip_fit") ~= false and configui.getValue("hand_pose_driver") ~= false)
+		if not okF and not T20.fingerfitErr then T20.fingerfitErr = true uevr.params.functions.log_info("[FIT] error: " .. tostring(errF)) end
+	end
+	pcall(T20.camKidsPoll) -- s131 discovery
+	if T20.statusfx ~= nil then -- step 122e: off in menus/pause (widgets restored, camera reset)
+		local okF, errF = pcall(T20.statusfx.tick, delta, regularPlayLast == true and configui.getValue("status_fx_eyes") ~= false, configui.getValue("status_fx_mode"))
+		if not okF and not T20.statusfxErr then T20.statusfxErr = true uevr.params.functions.log_info("[FX] error: " .. tostring(errF)) end
+		if T20.statusfx.accNudge ~= nil then pcall(T20.statusfx.accNudge, configui.getValue("acc_nudge_across"), configui.getValue("acc_nudge_elbow"), configui.getValue("acc_nudge_out")) end -- step 128
+		local okAc, errAc = pcall(T20.statusfx.accTick, delta, regularPlayLast == true and configui.getValue("status_acc_icons") ~= false) -- step 126b
+		if not okAc and not T20.accErr then T20.accErr = true uevr.params.functions.log_info("[FX] accessory error: " .. tostring(errAc)) end
+	end
+	if T20.armhud ~= nil then -- step 74
+		local okA, errA = pcall(T20.armhud.tick, delta, regularPlayLast == true and configui.getValue("6dof_right") == true)
+		if not okA and not T20.armhudErr then T20.armhudErr = true uevr.params.functions.log_info("[ARMHUD] error: " .. tostring(errA)) end
+		pcall(T20.flatPanelTick, delta)
+		pcall(T20.armhud.foreTick, delta) -- step 114: forearm anchors, every frame (step 117: + upper-arm anchors)
+		local okC, errC = pcall(T20.armhud.coinTick, delta, regularPlayLast == true and configui.getValue("6dof_right") == true)
+		if not okC and not T20.coinErr then T20.coinErr = true uevr.params.functions.log_info("[ARMHUD] coin error: " .. tostring(errC)) end
 	end
 end)
 
@@ -3211,7 +4080,8 @@ function on_xinput_get_state(retval, user_index, state)
 		local g = state.Gamepad
 		-- step 42 (headset 2026-11-15b): with finger knives the left hand stays open (no point, no fist) unless it holds an item
 		local bs = T20.belt ~= nil and T20.belt.S or nil
-		local open = configui.getValue("knife_fingers") == true and not pickableHeld and not (bs ~= nil and bs.grab ~= nil and bs.grab.hand == 1)
+		local lHeld = pickableHeld and T20.pkHeldParent == nil -- step 117: right-hand pickups leave the left hand alone
+		local open = configui.getValue("knife_fingers") == true and not lHeld and not (bs ~= nil and bs.grab ~= nil and bs.grab.hand == 1)
 		local fake = not open and showLaser == true and configui.getValue("knife_point_pose") ~= false
 		local b0, t0, rt0 = g.wButtons, g.bLeftTrigger, g.bRightTrigger
 		if open then g.wButtons = b0 & ~XINPUT_GAMEPAD_LEFT_SHOULDER g.bLeftTrigger = 0
@@ -3219,6 +4089,43 @@ function on_xinput_get_state(retval, user_index, state)
 		-- step 50 (headset 2026-11-15c): the weapon pose curls the index only on trigger and the rest only on grip, so a
 		-- held weapon looked pointed at -> grip + trigger fed to the hand animation only while a melee weapon is held
 		local fist = isHoldingWeapon and configui.getValue("weapon_grip_pose") ~= false
+		-- step 96: own pose driver (open by default, fist on grip / held item, steady weapon fist); off = old lib path
+		if T20.handpose ~= nil and configui.getValue("hand_pose_driver") ~= false then
+			-- the callback runs once per XInput slot every frame (fake run: 4x); only inputIndex has the real buttons, the
+			-- others read empty -> posing on every call flipped the hands each call (likely the old point/grip flicker)
+			if user_index ~= (inputIndex or 0) then g.wButtons, g.bLeftTrigger, g.bRightTrigger = b0, t0, rt0 return end
+			local iL, iR = T20.hpL, T20.hpR
+			-- step 106: new layout remaps the pad for the game; the hands follow the physical buttons
+			local P = T20.phys
+			local b0p, t0p, rt0p
+			if P.on then b0p, t0p, rt0p = (P.lb and XINPUT_GAMEPAD_LEFT_SHOULDER or 0) | (P.rb and XINPUT_GAMEPAD_RIGHT_SHOULDER or 0), P.lt, P.rt
+			else b0p, t0p, rt0p = b0, t0, rt0 end
+			iL.weapon, iL.weaponFist, iL.trig = false, false, t0p > 100
+			iL.grip = (b0p & XINPUT_GAMEPAD_LEFT_SHOULDER) ~= 0
+			iL.holding = lHeld == true or (bs ~= nil and bs.grab ~= nil and bs.grab.hand == 1)
+			iL.point = showLaser == true and configui.getValue("knife_point_pose") ~= false and configui.getValue("knife_fingers") ~= true
+			iR.weapon, iR.weaponFist, iR.trig = isHoldingWeapon, configui.getValue("weapon_grip_pose") ~= false, rt0p > 100
+			if isHoldingWeapon ~= T20.hpWLast then -- s131 discovery (headset 2026-11-22: new game, no weapon, right hand "goes crazy")
+				pcall(function()
+					T20.hpWLast = isHoldingWeapon
+					local now = os.clock()
+					if now - (T20.hpWT or 0) > 1.0 then T20.hpWT, T20.hpWN = now, 0 end
+					T20.hpWN = (T20.hpWN or 0) + 1
+					if T20.hpWN <= 6 then
+						local p = api:get_local_pawn(0)
+						local w = p ~= nil and p.CurrentInHandWeapon or nil
+						uevr.params.functions.log_info(string.format("[HANDPOSE] right weapon=%s inHand=%s flips/s=%d", tostring(isHoldingWeapon),
+							w ~= nil and w:get_class():get_fname():to_string() or "nil", T20.hpWN))
+					end
+				end)
+			end
+			iR.grip = (b0p & XINPUT_GAMEPAD_RIGHT_SHOULDER) ~= 0
+			iR.holding = bs ~= nil and bs.grab ~= nil and bs.grab.hand == 2
+			iR.point = false
+			local okP, errP = pcall(T20.handpose.update, iL, iR, os.clock())
+			if not okP and not T20.hpErr then T20.hpErr = true uevr.params.functions.log_info("[HANDPOSE] error: " .. tostring(errP)) end
+			if okP then g.wButtons, g.bLeftTrigger, g.bRightTrigger = b0, t0, rt0 return end
+		end
 		if fist then g.wButtons = g.wButtons | XINPUT_GAMEPAD_RIGHT_SHOULDER g.bRightTrigger = 255 end
 		local okH, errH = pcall(hands.handleInput, state, isHoldingWeapon, hand)
 		if open or fake or fist then g.wButtons, g.bLeftTrigger, g.bRightTrigger = b0, t0, rt0 end
@@ -3236,12 +4143,207 @@ function initHands()
 	local paramsFile = 'hands_parameters' -- found in the [game profile]/data directory
 	local configName = 'Main' -- the name you gave your config
 	local animationName = 'Shared' -- the name you gave your animation
-	hands.createFromConfig(paramsFile, configName, animationName)
+	-- step 126: one config table shared with the hands lib, so qd_gamegrip can swap the weapon grip pose in place
 	configuration = json.load_file(paramsFile .. ".json")
-	animations = configuration["animations"][animationName]
+	hands.createFromConfig(configuration or paramsFile, configName, animationName)
+	animations = configuration ~= nil and configuration["animations"][animationName] or nil
+	T20.handAnims = animations
+	if T20.gamegrip ~= nil then pcall(T20.gamegrip.reset) end
+	if T20.fingerfit ~= nil then pcall(T20.fingerfit.reset) end
 end
 
 --interaction
+-- step 123 (headset 2026-11-20d: some floor items answer the left-hand aim): log the game's interact target (pawn
+-- Current_Interact_Actor) class, its distance to the right-hand aim ray and whether our pickup list knows the class
+function T20.logGameTarget()
+	local pawn = uevr.api:get_local_pawn(0)
+	local a = pawn ~= nil and pawn.Current_Interact_Actor or nil
+	-- step 124: the pawn field stayed empty on every press (headset 2026-11-21); the game's pick lives on its player
+	-- interaction component (found by class name among the pawn's components, press-time only)
+	local src = "pawn"
+	if a == nil and pawn ~= nil then
+		pcall(function()
+			if T20.interComp == nil or uevrUtils.getValid(T20.interComp) == nil then
+				T20.interComp = nil
+				local cls = uevrUtils.get_class("Class /Script/Engine.ActorComponent")
+				local arr = pawn:K2_GetComponentsByClass(cls)
+				for _, c in ipairs(arr or {}) do
+					if c:get_class():get_fname():to_string():find("PlayerInteraction", 1, true) then T20.interComp = c break end
+				end
+				uevr.params.functions.log_info("[PICKUP] interaction component " .. (T20.interComp ~= nil and "found" or "not found"))
+			end
+			if T20.interComp ~= nil then
+				a = T20.interComp.Current_Interact_Actor
+				src = "interaction component"
+				uevr.params.functions.log_info(string.format("[PICKUP] interaction component: distance %s disabled %s",
+					tostring(T20.interComp.InteractionDistance), tostring(T20.interComp.DisableInteraction)))
+			end
+		end)
+	end
+	if a == nil then uevr.params.functions.log_info("[PICKUP] game target: none (pawn + interaction component)") return end
+	uevr.params.functions.log_info("[PICKUP] game target from the " .. src)
+	local cls = a:get_class()
+	local chain, c, known = {}, cls, false
+	for _ = 1, 6 do
+		if c == nil then break end
+		local n = c:get_full_name()
+		chain[#chain + 1] = c:get_fname():to_string()
+		for _, pn in ipairs(pickableClassNames) do if n == pn then known = true end end
+		c = c:get_super_struct()
+	end
+	local d = -1.0
+	pcall(function()
+		local ctrl = controllers.getController(1)
+		local p, f, l = ctrl:K2_GetComponentLocation(), ctrl:GetForwardVector(), a:K2_GetActorLocation()
+		local vx, vy, vz = l.X - p.X, l.Y - p.Y, l.Z - p.Z
+		local t = vx * f.X + vy * f.Y + vz * f.Z
+		local qx, qy, qz = vx - t * f.X, vy - t * f.Y, vz - t * f.Z
+		d = math.sqrt(qx * qx + qy * qy + qz * qz)
+	end)
+	uevr.params.functions.log_info(string.format("[PICKUP] game target class chain %s | in pickup list=%s | off right ray %.0f cm",
+		table.concat(chain, " < "), tostring(known), d))
+end
+-- s131 discovery (headset 2026-11-22: eaten / auto-shown items sit too close to the eyes): 2 Hz, the children (two
+-- levels) of pawn.CameraAttachedComp and pawn.FirstPersonCamera; on a count change logs each "[CAMKIDS] ..." with
+-- class, visibility and distance from the camera. Log only, nothing moved.
+T20.camKids = { t = 0.0, n = -1 }
+function T20.camKidsPoll()
+	local now = os.clock()
+	if now - T20.camKids.t < 0.5 then return end
+	T20.camKids.t = now
+	local pawn = api:get_local_pawn(0)
+	if pawn == nil then return end
+	local roots = { pawn.CameraAttachedComp, pawn.FirstPersonCamera }
+	local list = {}
+	for _, r in ipairs(roots) do
+		if r ~= nil then
+			for _, c in ipairs(r.AttachChildren or {}) do
+				if c ~= nil then
+					list[#list + 1] = c
+					pcall(function() for _, c2 in ipairs(c.AttachChildren or {}) do if c2 ~= nil then list[#list + 1] = c2 end end end)
+				end
+			end
+		end
+	end
+	if #list == T20.camKids.n then return end
+	T20.camKids.n = #list
+	local cam = pawn.FirstPersonCamera
+	local cl = cam ~= nil and cam:K2_GetComponentLocation() or nil
+	uevr.params.functions.log_info("[CAMKIDS] count " .. #list)
+	for i, c in ipairs(list) do
+		pcall(function()
+			local l = c:K2_GetComponentLocation()
+			local d = cl ~= nil and math.sqrt((l.X - cl.X) ^ 2 + (l.Y - cl.Y) ^ 2 + (l.Z - cl.Z) ^ 2) or -1
+			local o = c:GetOwner()
+			uevr.params.functions.log_info(string.format("[CAMKIDS] %d %s %s owner=%s vis=%s dist=%.0f cm", i, c:get_class():get_fname():to_string(),
+				c:get_fname():to_string(), o ~= nil and o:get_class():get_fname():to_string() or "nil", tostring(c:IsVisible()), d))
+		end)
+	end
+end
+-- step 124 (headset 2026-11-21: levers only answer the left-hand aim): on an X press the right index traces
+-- T20.LEVER_RANGE cm; an actor hit (or its attach parent) with the game's GetInteractInfo + Interact functions (levers,
+-- lifts, switches; class-agnostic) that says it is interactible gets Interact(pawn) and the press is ours (option
+-- lever_right_hand). Press-time only, one trace. Logs "[LEVER] ...".
+T20.LEVER_RANGE = 250.0
+T20.lv = { s = {X = 0, Y = 0, Z = 0}, e = {X = 0, Y = 0, Z = 0}, ignore = {}, o1 = {}, o2 = {}, o3 = {} }
+function T20.leverActor(a)
+	for _ = 1, 2 do
+		if a == nil then return nil end
+		if a.Interact ~= nil and a.GetInteractInfo ~= nil then return a end
+		local okP, p = pcall(function() return a:GetAttachParentActor() end)
+		a = okP and p or nil
+	end
+	return nil
+end
+function T20.leverTry()
+	if configui.getValue("lever_right_hand2") == false then return false end
+	local pawn = api:get_local_pawn(0)
+	local ctrl = controllers.getController(1, true) or controllers.getController(1)
+	if pawn == nil or ctrl == nil then return false end
+	local L = T20.lv
+	local p, f = ctrl:K2_GetComponentLocation(), ctrl:GetForwardVector()
+	L.s.X, L.s.Y, L.s.Z = p.X, p.Y, p.Z
+	L.e.X, L.e.Y, L.e.Z = p.X + f.X * T20.LEVER_RANGE, p.Y + f.Y * T20.LEVER_RANGE, p.Z + f.Z * T20.LEVER_RANGE
+	L.ignore[1] = pawn
+	local okW, wo = pcall(function() return activeWeaponMesh ~= nil and activeWeaponMesh:GetOwner() or nil end)
+	L.ignore[2] = okW and wo or nil
+	L.fx, L.fy, L.fz = f.X, f.Y, f.Z
+	local ok, hit = pcall(kismet_system_library.LineTraceSingle, kismet_system_library, uevrUtils.get_world(), L.s, L.e, 0, false, L.ignore, 0, reusable_hit_result, true, aimColor, aimColor, 0.0)
+	if not ok or not hit then return T20.npcTry(pawn, 1e9) end
+	-- hit Actor/Component are weak pointers Lua can't read (Test 48): GameplayStatics.BreakHitResult (4.27 signature,
+	-- 18 args) hands them back as out params (table.result); press-time only, so the small tables are fine
+	local a = nil
+	pcall(function()
+		local gs = T20.rbGs
+		if gs == nil then gs = api:find_uobject("Class /Script/Engine.GameplayStatics"):get_class_default_object() T20.rbGs = gs end
+		local o = {}
+		for k = 1, 17 do o[k] = {} end
+		gs:BreakHitResult(reusable_hit_result, o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8], o[9], o[10], o[11], o[12], o[13], o[14], o[15], o[16], o[17])
+		a = o[10].result
+		if a == nil and o[11].result ~= nil then a = o[11].result:GetOwner() end
+	end)
+	if a == nil or a.get_address == nil then
+		if not T20.lvNoActor then T20.lvNoActor = true uevr.params.functions.log_info("[LEVER] trace hit, actor not readable (BreakHitResult)") end
+		return false
+	end
+	local lv = T20.leverActor(a)
+	if lv == nil then
+		uevr.params.functions.log_info(string.format("[LEVER] right ray hit %s at %.0f cm: no interact functions", a:get_class():get_fname():to_string(), reusable_hit_result.Distance))
+		return T20.npcTry(pawn, reusable_hit_result.Distance + 60.0)
+	end
+	local can = true
+	pcall(function()
+		L.o1.result, L.o2.result, L.o3.result = nil, nil, nil
+		lv:GetInteractInfo(pawn, L.o1, L.o2, L.o3)
+		if L.o1.result == false then can = false end
+	end)
+	local cn = lv:get_class():get_fname():to_string()
+	if not can then uevr.params.functions.log_info("[LEVER] " .. cn .. " not interactible now") return false end
+	local okI, errI = pcall(function() lv:Interact(pawn) end)
+	uevr.params.functions.log_info(string.format("[LEVER] right-hand interact %s at %.0f cm ok=%s %s", cn, reusable_hit_result.Distance, tostring(okI), okI and "" or tostring(errI)))
+	return okI
+end
+-- step 127 (headset 2026-11-21c: talking followed the left-hand aim): characters have no Visibility collision, so
+-- the lever ray passes them. Chests (Interact + InteractBox, solid lid/box meshes) answer the ray itself, else this. Fallback at X press: BoxComponents named InteractBox whose owner has Interact +
+-- GetInteractInfo, nearest to the right-index ray (perpendicular distance within the box's size, ahead of the hand,
+-- before maxT = the ray's own wall hit + 60 cm). Press-time only. Logs "[LEVER] ...".
+T20.NPC_RANGE = 300.0
+function T20.npcTry(pawn, maxT)
+	local L = T20.lv
+	local boxes = uevrUtils.find_all_of("Class /Script/Engine.BoxComponent", false) or {}
+	local best, bestS, bestT, nb = nil, 1e9, 0, 0
+	for _, b in ipairs(boxes) do
+		pcall(function()
+			if b:get_fname():to_string() ~= "InteractBox" then return end
+			nb = nb + 1
+			local o = b:GetOwner()
+			if o == nil or o.Interact == nil or o.GetInteractInfo == nil then return end
+			local c, e = b:K2_GetComponentLocation(), b:GetScaledBoxExtent()
+			local dx, dy, dz = c.X - L.s.X, c.Y - L.s.Y, c.Z - L.s.Z
+			local t = dx * L.fx + dy * L.fy + dz * L.fz
+			if t < 0 or t > math.min(T20.NPC_RANGE, maxT) then return end
+			local px, py, pz = dx - t * L.fx, dy - t * L.fy, dz - t * L.fz
+			local d = math.sqrt(px * px + py * py + pz * pz)
+			local r = math.max(30.0, math.min(100.0, math.max(e.X, e.Y, e.Z)))
+			if d <= r and d / r < bestS then best, bestS, bestT = o, d / r, t end
+		end)
+	end
+	if best == nil then
+		uevr.params.functions.log_info(string.format("[LEVER] no character on the right ray (%d interact boxes)", nb))
+		return false
+	end
+	local can = true
+	pcall(function()
+		L.o1.result, L.o2.result, L.o3.result = nil, nil, nil
+		best:GetInteractInfo(pawn, L.o1, L.o2, L.o3)
+		if L.o1.result == false then can = false end
+	end)
+	local cn = best:get_class():get_fname():to_string()
+	if not can then uevr.params.functions.log_info("[LEVER] " .. cn .. " (box) not interactible now") return false end
+	local okI, errI = pcall(function() best:Interact(pawn) end)
+	uevr.params.functions.log_info(string.format("[LEVER] right-hand interact %s via box at %.0f cm ok=%s %s", cn, bestT, tostring(okI), okI and "" or tostring(errI)))
+	return okI
+end
 function canInteract()
 	local playerController = uevr.api:get_player_controller(0)
 	if playerController ~= nil and playerController.MyHUD ~= nil then
@@ -3324,6 +4426,96 @@ local function beginDodge(state)
 	dodge.startPos = pawn:K2_GetActorLocation()
 	dodge.active = true
 end
+
+-- step 102 (headset 2026-11-17: a semi-auto gun "blocked by the delay"): a pull inside the gun's fire delay
+-- (NextAllowedFireTime, world seconds; ~0.3 s) was dropped by the game (fake: pulls 0.25 s apart fired 3 of 6).
+-- Buffer it: fire as soon as the gun is ready, within T20.RB_WIN s. Runs in the xinput callback (same place as the
+-- normal RT AttackPressed), never in tick. Option ranged_fire_buffer.
+-- step 107 (headset 2026-11-18: fast taps still dropped): a count of pending shots (cap RB_MAX) instead of one slot;
+-- each fires once the gun's live NextAllowedFireTime has passed (and RB_GAP after our last buffered shot, so the game
+-- has set the next delay); a tap while shots are pending queues behind them and extends the window.
+-- step 114 (headset 2026-11-19: shots kept firing after the last tap): at most 1 waiting shot, dropped when the gun
+-- can't fire it within RB_WIN (0.25 s) of the latest tap.
+T20.RB_MAX = 1
+T20.RB_WIN = 0.25
+T20.RB_GAP = 0.05
+T20.rb = { w = nil, n = 0, until_ = 0.0, firedAt = -1.0 }
+function T20.rbNow()
+	local gs = T20.rbGs
+	if gs == nil then gs = api:find_uobject("Class /Script/Engine.GameplayStatics"):get_class_default_object() T20.rbGs = gs end
+	return gs:GetTimeSeconds(api:get_engine().GameViewport.World)
+end
+-- before the RT AttackPressed: true = the gun is still in its fire delay (the press is buffered)
+function T20.rbPress(w)
+	if w == nil or T20.rrOn ~= true or configui.getValue("ranged_fire_buffer") == false or w.FullAuto == true then return false end
+	local nxt = w.NextAllowedFireTime
+	if type(nxt) ~= "number" then return false end
+	local now = T20.rbNow()
+	local rb = T20.rb
+	if rb.n > 0 and rb.w == w and now <= rb.until_ then
+		if rb.n < T20.RB_MAX then rb.n = rb.n + 1 end
+		rb.until_ = now + T20.RB_WIN
+		return true
+	end
+	if nxt <= now or nxt - now > T20.RB_WIN then return false end
+	rb.w, rb.n, rb.until_ = w, 1, now + T20.RB_WIN
+	return true
+end
+-- every xinput frame: fire a buffered press once the delay is over (held = RT still down)
+function T20.rbPoll(w, held)
+	local rb = T20.rb
+	if rb.n <= 0 then return end
+	if w ~= rb.w then rb.n = 0 rb.w = nil return end
+	local now = T20.rbNow()
+	if now > rb.until_ then rb.n = 0 rb.w = nil pcall(meleeLog, "RT buffered shot expired") return end
+	local nxt = w.NextAllowedFireTime
+	if type(nxt) == "number" and now < nxt then return end
+	if now - rb.firedAt < T20.RB_GAP then return end
+	rb.n = rb.n - 1
+	if rb.n == 0 then rb.w = nil end
+	rb.firedAt = now
+	w:AttackPressed()
+	if not held or rb.n > 0 then w:AttackReleased() end
+	pcall(meleeLog, "RT buffered shot fired (pending " .. rb.n .. ")")
+end
+
+-- step 99 (headset 2026-11-17: the compass followed the right hand): the compass is a render-world actor
+-- (pawn.HUD.CompassWidget.RWM) whose tick turns CameraRoot to (control pitch, control yaw - 90) and captures by hand
+-- (bCaptureEveryFrame false), and the control rotation follows the right hand while it aims. After that tick we turn
+-- CameraRoot to the left hand's finger direction (throw aim offsets) and capture again. Option compass_left_heading.
+T20.ch = { rwm = nil, findT = 0.0, rot = { Pitch = 0.0, Yaw = 0.0, Roll = 0.0 }, logged = false, err = false }
+function T20.compassHeadTick()
+	if configui.getValue("compass_left_heading") == false or not regularPlayLast or currentCompassWidgetComponent == nil then return end
+	local ch = T20.ch
+	if ch.rwm == nil or uevrUtils.getValid(ch.rwm) == nil then
+		ch.rwm = nil
+		if os.clock() < ch.findT then return end
+		ch.findT = os.clock() + 2.0
+		local p = api:get_local_pawn(0)
+		if p == nil or p.HUD == nil or p.HUD.CompassWidget == nil then return end
+		ch.rwm = p.HUD.CompassWidget.RWM
+		if ch.rwm == nil then return end
+		if not ch.logged then ch.logged = true uevr.params.functions.log_info("[COMPASS] left-hand heading on " .. ch.rwm:get_class():get_fname():to_string()) end
+	end
+	local lc = controllers.getController(0)
+	if lc == nil then return end
+	local r = lc:K2_GetComponentRotation()
+	local x, y, z = T20.throw.aimDir(r.Pitch, r.Yaw, r.Roll, configui.getValue("throw_aim_pitch") or 35.0, configui.getValue("throw_aim_yaw") or 7.0)
+	local a = ch.rwm
+	ch.rot.Pitch = math.deg(math.atan(z, math.sqrt(x * x + y * y)))
+	ch.rot.Yaw = math.deg(math.atan(y, x)) - 90.0
+	ch.rot.Roll = 0.0
+	a.CameraRoot:K2_SetRelativeRotation(ch.rot, false, T20.chHr, true)
+	a.ColorCapture:CaptureScene()
+	a.OpacityCapture:CaptureScene()
+end
+T20.chHr = {}
+pcall(function()
+	uevr.sdk.callbacks.on_post_engine_tick(function(engine, delta)
+		local ok, err = pcall(T20.compassHeadTick)
+		if not ok and not T20.ch.err then T20.ch.err = true uevr.params.functions.log_info("[COMPASS] left heading error: " .. tostring(err)) end
+	end)
+end)
 
 uevr.sdk.callbacks.on_post_engine_tick(function(engine, delta)
 	if not dodge.active then return end
@@ -3457,18 +4649,150 @@ pcall(function()
 		log = function(m) uevr.params.functions.log_info(m) end})
 	QD.belt = T20.belt
 end)
+-- step 122e: status effect overlays -> camera post-process (libs/qd_statusfx.lua, option status_fx_eyes)
+pcall(function()
+	T20.statusfx = require("libs/qd_statusfx")
+	T20.statusfx.init({uevrUtils = uevrUtils, log = function(m) uevr.params.functions.log_info(m) end,
+		hosts = XHAIR_HOSTS, controllers = controllers, hr = reusable_hit_result, -- step 124: visor / badge deps
+		belt = T20.belt, -- step 126f: accessory 3D models (itemModel)
+		armPanel = function() local a = T20.armhud if a == nil or a.S == nil then return nil end return a.S.panel end,
+		rightArm = function() -- step 127: accessories on the palm side of the right forearm (was the top, step 126b)
+			local a = T20.armhud
+			if a == nil or a.palmAnchor == nil then return nil end
+			return a.palmAnchor(1, "acc")
+		end,
+		rightArmFacing = function() local a = T20.armhud return a ~= nil and a.palmFacing ~= nil and a.palmFacing(1) or nil end,
+		rightArmRelease = function() local a = T20.armhud if a ~= nil and a.palmRelease ~= nil then a.palmRelease(1, "acc") end end})
+	QD.statusfx = T20.statusfx
+end)
+-- step 82: 3D belt skin (option belt_3d, default off); sets T20.belt.skin itself
+pcall(function()
+	T20.belt3d = require("libs/qd_belt3d")
+	T20.belt3d.init({uevrUtils = uevrUtils, configui = configui, api = api, hr = reusable_hit_result, belt = T20.belt,
+		log = function(m) uevr.params.functions.log_info(m) end})
+	QD.belt3d = T20.belt3d
+end)
 -- step 22: right grip at the right shoulder = D-pad right (weapon switch). Same early xinput callback as the belt.
 pcall(function()
 	T20.shoulder = require("libs/qd_shoulder")
 	T20.shoulder.init({uevrUtils = uevrUtils, controllers = controllers, configui = configui, log = function(m) uevr.params.functions.log_info(m) end})
 	QD.shoulder = T20.shoulder
+	-- step 96: hand pose driver (used by on_xinput_get_state)
+	pcall(function()
+		T20.hpL, T20.hpR = {}, {}
+		T20.handpose = require("libs/qd_handpose")
+		T20.handpose.init({hands = hands, handsAnimation = handsAnimation, animation = require("libs/animation"), attachments = attachments, uevrUtils = uevrUtils, log = function(m) uevr.params.functions.log_info(m) end})
+		QD.handpose = T20.handpose
+	end)
+	pcall(function() -- step 126: per-weapon grip pose sampled from the game's arms
+		T20.gamegrip = require("libs/qd_gamegrip")
+		T20.gamegrip.init({uevrUtils = uevrUtils, anims = function() return T20.handAnims end,
+			dirty = function() if T20.handpose ~= nil then T20.handpose.S.dirty = true end end,
+			weaponMesh = function() return activeWeaponMesh end, -- step 127 seat discovery
+			hand = function() return hands.getHandComponent(Handed.Right) end,
+			log = function(m) uevr.params.functions.log_info(m) end})
+		QD.gamegrip = T20.gamegrip
+	end)
+	pcall(function() -- step 129: fingers fitted to each weapon's handle
+		T20.fingerfit = require("libs/qd_fingerfit")
+		T20.fingerfit.init({uevrUtils = uevrUtils, animation = require("libs/animation"), anims = function() return T20.handAnims end,
+			dirty = function() if T20.handpose ~= nil then T20.handpose.S.dirty = true end end,
+			weaponMesh = function() return activeWeaponMesh end,
+			hand = function() return hands.getHandComponent(Handed.Right) end,
+			log = function(m) uevr.params.functions.log_info(m) end})
+		QD.fingerfit = T20.fingerfit
+	end)
 end)
 -- step 37: knife charges as knives between the left fingers
 pcall(function()
 	T20.knives = require("libs/qd_knives")
 	T20.knives.init({uevrUtils = uevrUtils, configui = configui, hands = hands, api = api, hr = reusable_hit_result,
+		armhud = function() return T20.armhud end,
 		log = function(m) uevr.params.functions.log_info(m) end})
 	QD.knives = T20.knives
+end)
+-- step 74: arm HUD bars on the left glove (libs/qd_armhud.lua); the flat status panel is hidden while it is on
+pcall(function()
+	T20.armhud = require("libs/qd_armhud")
+	T20.armhud.init({uevrUtils = uevrUtils, configui = configui, hands = hands, api = api, hr = reusable_hit_result,
+		belt = T20.belt, compass = function() return currentCompassWidgetComponent end,
+		controllers = controllers, ik = function() return T20.ik end, -- step 114 forearm anchors
+		log = function(m) uevr.params.functions.log_info(m) end})
+	QD.armhud = T20.armhud
+	if T20.belt ~= nil then T20.belt.gloveFrame = function(side) return T20.armhud.gloveFrame(side) end end -- step 122
+	if T20.belt ~= nil then T20.belt.shoulderLoc = function(side) return T20.armhud.shoulderLoc(side) end end -- step 124: shoulder heals
+	if T20.belt ~= nil then T20.belt.elbowLoc = function(side) return T20.armhud.elbowLoc(side) end end -- step 125: elbow heals
+	-- step 122 (headset 2026-11-20c): seated play raises the view to standing eye height. Test 89: VR_CameraUpOffset
+	-- lifted only the render camera (hands and controllers stayed 45 cm low) -> lower UEVR's standing origin instead
+	-- (metres, Y up): head AND controller poses are relative to it, so everything rises together. Only our own delta
+	-- is applied/removed (uevrlib roomscale keeps origin Y). At load and on toggle, never per frame.
+	T20.SEATED_LIFT_CM = 45.0
+	T20.seatedApply = function()
+		local v = configui.getValue("seated_play") == true and T20.SEATED_LIFT_CM or 0.0
+		local was = T20.seatedV or 0.0
+		if was == v then return end
+		local o = Vector3f.new(0, 0, 0)
+		vr.get_standing_origin(o)
+		local y0 = o.Y
+		o.Y = o.Y - (v - was) / 100.0
+		vr.set_standing_origin(o)
+		T20.seatedV = v
+		uevr.params.functions.log_info(string.format("[SEATED] lift %.1f cm: standing origin Y %.3f -> %.3f m", v, y0, o.Y))
+	end
+	pcall(T20.seatedApply)
+	pcall(function() configui.onUpdate("seated_play", function() pcall(T20.seatedApply) end) end)
+	if T20.belt ~= nil then -- step 120: shoulder heals use the body yaw (IK mesh, else the upper-arm anchors' follow yaw)
+		T20.belt.bodyYaw = function()
+			local y = nil
+			if T20.ik ~= nil and T20.ik.bodyYaw ~= nil then y = T20.ik.bodyYaw() end
+			if y == nil and T20.armhud.UAS ~= nil then y = T20.armhud.UAS.bodyYaw end
+			return y
+		end
+		-- step 120 (self-test: an item held in the right hand sat inside the gun model): hide the held weapon meanwhile
+		T20.belt.onHold = function(hand, on)
+			if hand ~= 2 then return end
+			if on then
+				local wm = activeWeaponMesh
+				if wm ~= nil and uevrUtils.getValid(wm) ~= nil then
+					wm:SetVisibility(false, true)
+					T20.holdHidW = wm
+					uevr.params.functions.log_info("[BELT] weapon hidden while the right hand holds a belt item")
+				end
+			elseif T20.holdHidW ~= nil then
+				local wm = T20.holdHidW
+				T20.holdHidW = nil
+				if uevrUtils.getValid(wm) ~= nil then wm:SetVisibility(true, true) end
+			end
+		end
+	end
+end)
+T20.fp = {t = 0, comp = nil, vis = nil}
+function T20.flatPanelTick(dt)
+	local F = T20.fp
+	F.t = F.t + (dt or 0)
+	if F.t < 0.25 then return end
+	F.t = 0
+	local c = hpHudComponent
+	if c == nil or uevrUtils.getValid(c) == nil then return end
+	if F.comp ~= c then F.comp, F.vis = c, nil end
+	local vis = configui.getValue("arm_hud") == false
+	if vis ~= F.vis then
+		F.vis = vis
+		pcall(function() c:SetVisibility(vis, true) end)
+		uevr.params.functions.log_info("[ARMHUD] flat status panel " .. (vis and "shown" or "hidden"))
+	end
+end
+-- step 64: thrown knives start at the finger knife (libs/qd_throw.lua): visual shift of the projectile's parts, driven
+-- from the stereo view callback (after the world tick, before the frame is drawn)
+pcall(function()
+	T20.throw = require("libs/qd_throw")
+	T20.throw.init({uevrUtils = uevrUtils, configui = configui, controllers = controllers, api = api, hr = reusable_hit_result,
+		ksl = kismet_system_library,
+		log = function(m) uevr.params.functions.log_info(m) end,
+		knifePos = function(i) if T20.knives ~= nil then return T20.knives.throwPos(i) end end,
+		poke = function() if T20.knives ~= nil then T20.knives.poke() end end})
+	QD.throw = T20.throw
+	uevrUtils.registerPreCalculateStereoViewCallback(function() pcall(T20.throw.view) end)
 end)
 -- step 3: IK arms. require only works while the script loads, so the IK lib (and its side modules) is loaded only when the
 -- option is already on: off = nothing new runs and pawn.Arms stays hidden as before.
@@ -3499,8 +4823,11 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 		end
 	end
 	if inputIndex ~= nil and user_index ~= inputIndex then return end -- skip the 2nd, all-zero call (see main callback)
+	pcall(T20.physCapture, state.Gamepad)
 	if T20.shoulder ~= nil then pcall(T20.shoulder.onXInput, state) end
 	if T20.belt ~= nil then pcall(T20.belt.onXInput, state) end
+	local okM, errM = pcall(T20.remap, state)
+	if not okM and not T20.remapErr then T20.remapErr = true uevr.params.functions.log_info("[LAYOUT] remap error: " .. tostring(errM)) end
 	pcall(T20.rrXInput, state)
 end)
 
@@ -3527,7 +4854,16 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 		pcall(function() -- step 29: beam_on_x: hold X = aim the beam, release = grab; X stays from the game once an item was targeted
 			local x = (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) ~= 0
 			T20.xRelAimed = (T20.xRaw == true) and not x and T20.xAimed == true
-			if x and not T20.xRaw then T20.xGame = canInteract() == true end -- a press while the game offers an interaction is the game's (no beam)
+			if x and not T20.xRaw then -- a press while the game offers an interaction is the game's (no beam)
+				T20.xGame = canInteract() == true and T20.pkAimHit ~= true -- step 118: unless the right index points at an item
+				if T20.pkAimHit == true and T20.beamOnX() then T20.xAimed = true end -- swallowed from the first frame
+				uevr.params.functions.log_info(string.format("[PICKUP] X press: game=%s aimHit=%s", tostring(T20.xGame), tostring(T20.pkAimHit)))
+				if T20.xGame then pcall(T20.logGameTarget) end -- step 123 discovery: what the game's (left-aim) interact picked
+				if T20.pkAimHit ~= true and T20.pkAimRight == true then -- step 124: lever / switch under the right index
+					local okL, used = pcall(T20.leverTry)
+					if okL and used then T20.xAimed, T20.xGame = true, false end -- swallow this press (game would use the left aim)
+				end
+			end
 			if not x then T20.xAimed = false T20.xGame = false end
 			T20.xRaw = x
 			if x and T20.xAimed then state.Gamepad.wButtons = state.Gamepad.wButtons & ~XINPUT_GAMEPAD_X end
@@ -3555,9 +4891,19 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 			end
 			--if configui.getValue("6dof_right") ~= nil and configui.getValue("6dof_right") == true then
 				if activeWeapon ~= nil then
+					if T20.rb.n > 0 then pcall(T20.rbPoll, activeWeapon, rightTriggerHeld == true) end -- step 102/107
 					-- hysteresis (press >200, release <100) so an analog trigger hovering near the threshold can't re-fire
 					if state.Gamepad.bRightTrigger >200 or (rightTriggerHeld == true and state.Gamepad.bRightTrigger > 100) then
+						-- step 69: guns' auto-fire (and the game's own repeat) reads the pawn's AttackPressed, which the game's
+						-- input sets but our direct weapon call never did -> one round per pull. Held true while RT is down.
+						if T20.rrOn == true and configui.getValue("ranged_hold_fire") ~= false then
+							pcall(function() local pw = api:get_local_pawn(0) if pw.AttackPressed ~= true then pw.AttackPressed = true end end)
+							T20.rrHeldFlag = true
+						end
 						if rightTriggerHeld == false then --need to only call once, since calling ti again, cancels current call
+							if T20.rrOn == true and T20.throw ~= nil and T20.throw.gunArm ~= nil then pcall(T20.throw.gunArm) end -- step 127b discovery
+							local okRb, buffered = pcall(T20.rbPress, activeWeapon)
+							if okRb and buffered then pcall(meleeLog, "RT press buffered (gun fire delay)") end
 							activeWeapon:AttackPressed()
 							rtPressedAt = meleeClock
 							rtSwingReleased = false
@@ -3566,12 +4912,14 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 						rightTriggerHeld = true
 						rtLowSince = nil
 						state.Gamepad.bRightTrigger = 0
-					elseif rightTriggerHeld == true and (rtLowSince == nil or meleeClock - rtLowSince < 0.06) then
-						-- release debounce: ignore single-frame drops so holding RT can charge
+					elseif rightTriggerHeld == true and T20.rrOn ~= true and (rtLowSince == nil or meleeClock - rtLowSince < 0.06) then
+						-- release debounce: ignore single-frame drops so holding RT can charge (step 107: not for shooting
+						-- weapons: a quick re-tap inside it was never seen as a new press)
 						if rtLowSince == nil then rtLowSince = meleeClock end
 						state.Gamepad.bRightTrigger = 0
 					elseif rightTriggerHeld == true then
 						rtLowSince = nil
+						if T20.rrHeldFlag then T20.rrHeldFlag = false pcall(function() api:get_local_pawn(0).AttackPressed = false end) end
 						if rtSwingReleased then
 							pcall(meleeLog, string.format("RT up held=%.2fs (already released by swing)", meleeClock - rtPressedAt))
 						else
@@ -3624,6 +4972,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 								l2StabArmed = false -- a stab's alt attack is released by its own timer
 							else
 								activeWeapon:AltAttackReleased()
+								if ranged and T20.throw ~= nil and T20.throw.gunArm ~= nil then pcall(T20.throw.gunArm, true) end -- step 130: track the released alt shot (charging projectile already exists -> fresh)
 							end
 							l2DodgeHeld = false
 						end
@@ -3734,7 +5083,9 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 						return 
 					end
 				else
-					if state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ~= 0 or xGrab then
+					-- step 114 (headset 2026-11-19): New layout: LT (game LB) is the knife throw only, never a pickup grab (X grabs)
+					local lbGrab = state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ~= 0 and not T20.phys.on
+					if lbGrab or xGrab then
 						-- only a fresh press grabs: a button still held from the last grab must not take the next item
 						if not pickableHeld and not leftShoulderButtonHeld and not T20.xHeld then
 							local okG, errG = pcall(attachPickableToHand)
@@ -3746,7 +5097,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 								pcall(function() uevr.params.functions.log_info("[PICKUP] grab error: " .. tostring(errG)) end)
 							end
 						end
-						if state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ~= 0 then
+						if lbGrab then
 							leftShoulderButtonHeld = true
 							state.Gamepad.wButtons = state.Gamepad.wButtons - XINPUT_GAMEPAD_LEFT_SHOULDER
 						end
@@ -3938,11 +5289,12 @@ function isPickableFromDefaultLocationMathcesArea(pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/StoneGarden_1_Save.StoneGarden_1_Save") then
 		return string.find(pickupName, "_SG") or string.find(pickupName, "_FinalZone")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_1_save.Swamp_1_save") then
-		return string.find(pickupName, "_Swamp") 
+		return string.find(pickupName, "_Swamp") or string.find(pickupName, "JosamiSword_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_2_save.Swamp_2_save") then
-		return string.find(pickupName, "_Swamp") 
+		--return true
+		return string.find(pickupName, "_Swamp") or string.find(pickupName, "JosamiSword_Pickup_C") or string.find(pickupName, "RegenerationAmulet_Pickup_C") or  string.find(pickupName, "RuneVisionUnlock3_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_3_save.Swamp_3_save") then
-		return string.find(pickupName, "_Swamp") 
+		return string.find(pickupName, "_Swamp") or string.find(pickupName, "JosamiSword_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/TeleporterSecretDestination.TeleporterSecretDestination") then
 		return false
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/Other/BirdTestZone.BirdTestZone") then
@@ -3950,11 +5302,11 @@ function isPickableFromDefaultLocationMathcesArea(pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/Other/BirdTestZone_Castle.BirdTestZone_Castle") then
 		return false
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_End_Save.ROS_End_Save") then
-		return pickupLocation == 14 
+		return pickupLocation == 14 or string.find(pickupName, "Ros_Orb_BP_C") or string.find(pickupName, "GrimoireInk_Pickup_C") or string.find(pickupName, "WeaponUpgradeUnlock_8_PickupBP_C") or  string.find(pickupName, "PlasmaRifle_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_Start_Save.ROS_Start_Save") then
-		return pickupLocation == 14
+		return pickupLocation == 14 or string.find(pickupName, "Ros_Orb_BP_C") or string.find(pickupName, "GrimoireInk_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_Teleporter.ROS_Teleporter") then
-		return pickupLocation == 14
+		return pickupLocation == 14 or string.find(pickupName, "Ros_Orb_BP_C") or string.find(pickupName, "GrimoireInk_Pickup_C")
 	else 
 		return pickupLocation == 0 or pickupLocation == 7
 	end
@@ -3982,7 +5334,7 @@ function isPickableMathcesArea(pickupLocation, pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/2AquaRuins/AQ_Prison_Save.AQ_Prison_Save") then
 		return pickupLocation == 1
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/2AquaRuins/AQ_RaiderCamp_Save.AQ_RaiderCamp_Save") then
-		return pickupLocation == 1
+		return pickupLocation == 1 or pickupLocation == 13 or pickupLocation == 9
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/3Library/Lib_Archives_Save.Lib_Archives_Save") then
 		return pickupLocation == 2  or pickupLocation == 11 or string.find(pickupName, "BookKey_00_Eldritch_BP_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/3Library/Lib_Entrance_Save.Lib_Entrance_Save") then
@@ -3994,7 +5346,7 @@ function isPickableMathcesArea(pickupLocation, pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/4Mausoleum/Maus_Puwema_Save.Maus_Puwema_Save") then
 		return pickupLocation == 3 or string.find(pickupName, "RottenChalice_2_Pickup1_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/4Mausoleum/Maus_Upper_Save.Maus_Upper_Save") then
-		return pickupLocation == 3 or string.find(pickupName, "RottenChalice_2_Pickup1_C")
+		return pickupLocation == 3 or string.find(pickupName, "RottenChalice_2_Pickup1_C") or string.find(pickupName, "JosamiEgg_2_Pickup1_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/5AutumnIsland/AI_DropTunnel_Save.AI_DropTunnel_Save") then
 		return pickupLocation == 4 or string.find(pickupName, "BellTreasure_Pickup_C") or string.find(pickupName, "CellPhone_Pickup_C") or string.find(pickupName, "GameConsole_Pickup_C") or string.find(pickupName, "MechArm_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/5AutumnIsland/AI_Ossi_Save.AI_Ossi_Save") then
@@ -4004,21 +5356,23 @@ function isPickableMathcesArea(pickupLocation, pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/5AutumnIsland/AI_Start_Save.AI_Start_Save") then
 		return pickupLocation == 4 or string.find(pickupName, "BellTreasure_Pickup_C") or string.find(pickupName, "CellPhone_Pickup_C") or string.find(pickupName, "GameConsole_Pickup_C") or string.find(pickupName, "MechArm_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/6Castle/Castle_Junk_Save.Castle_Junk_Save") then
-		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C")
+		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C") or string.find(pickupName, "PuwemaGoldStatueTreasure_Pickup_C") or string.find(pickupName, "GoldWodasoStatue_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/6Castle/Castle_Lift_Save.Castle_Lift_Save") then
-		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C")
+		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C") or string.find(pickupName, "PuwemaGoldStatueTreasure_Pickup_C") or string.find(pickupName, "GoldWodasoStatue_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/6Castle/Castle_Start_Save.Castle_Start_Save") then
-		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C")
+		return pickupLocation == 5 or string.find(pickupName, "JigekiStatueGold_Pickup_C") or string.find(pickupName, "TimeSpellPocketWatch2__Pickup1_C") or string.find(pickupName, "GoldSipehaStatue_Pickup_C") or string.find(pickupName, "PuwemaGoldStatueTreasure_Pickup_C") or string.find(pickupName, "GoldWodasoStatue_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Forest_1_Save.Forest_1_Save") then
 		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or 
 		string.find(pickupName, "BellTreasure_2_Pickup1_C") or 
 		string.find(pickupName, "OnyxSipehaStatue_Pickup_C") or 
 		string.find(pickupName, "HolyBone_2_Pickup1_C") or
-		string.find(pickupName, "MysticalMirror_2_Pickup1_C")
+		string.find(pickupName, "MysticalMirror_2_Pickup1_C") or 
+		string.find(pickupName, "GoldCrab_Pickup_C") or 
+		string.find(pickupName, "PuwemaJadeStatue_Treasure_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Forest_2_Save.Forest_2_Save") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or string.find(pickupName, "OnyxSipehaStatue_Pickup_C")
+		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or string.find(pickupName, "OnyxSipehaStatue_Pickup_C") or string.find(pickupName, "GoldCrab_Pickup_C") or string.find(pickupName, "PuwemaJadeStatue_Treasure_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/GRSZ_save.GRSZ_save") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
+		return pickupLocation == 6 or pickupLocation == 12 or string.find(pickupName, "FancyCompass_2_Pickup1_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Prison_1_Save.Prison_1_Save") then
 		return pickupLocation == 6 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 8 
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Prison_2_Save.Prison_2_Save") then
@@ -4028,25 +5382,28 @@ function isPickableMathcesArea(pickupLocation, pickupName)
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/SG_FS_MiniTP_Exit.SG_FS_MiniTP_Exit") then
 		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/StoneGarden_1_Save.StoneGarden_1_Save") then
-		return pickupLocation == 6 or pickupLocation == 15 
+		return pickupLocation == 6 or pickupLocation == 15 or string.find(pickupName, "TimeSpellPocketWatch_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_1_save.Swamp_1_save") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
+		--return true
+		return pickupLocation == 6 or pickupLocation == 9 or pickupLocation == 13 or string.find(pickupName, "RottenChalice_Pickup_C") or string.find(pickupName, "GenieLamp_2_Pickup1_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_2_save.Swamp_2_save") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
+		--return true
+		return pickupLocation == 6 or pickupLocation == 9 or pickupLocation == 13 or string.find(pickupName, "RottenChalice_Pickup_C") or string.find(pickupName, "GenieLamp_2_Pickup1_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/Swamp_3_save.Swamp_3_save") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
+		--return true
+		return pickupLocation == 6 or pickupLocation == 9 or pickupLocation == 13 or string.find(pickupName, "RottenChalice_Pickup_C") or string.find(pickupName, "GenieLamp_2_Pickup1_C") 
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/7SZ/TeleporterSecretDestination.TeleporterSecretDestination") then
-		return pickupLocation == 6 or pickupLocation == 8 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
+		return pickupLocation == 6 or pickupLocation == 15 or pickupLocation == 9 or pickupLocation == 10 or pickupLocation == 11 or pickupLocation == 12 or pickupLocation == 13 
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/Other/BirdTestZone.BirdTestZone") then
 		return pickupLocation == 0 or pickupLocation == 1
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/Other/BirdTestZone_Castle.BirdTestZone_Castle") then
 		return pickupLocation == 5
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_End_Save.ROS_End_Save") then
-		return pickupLocation == 14 
+		return pickupLocation == 14 or string.find(pickupName, "QuartzWodasoStatue_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_Start_Save.ROS_Start_Save") then
-		return pickupLocation == 14
+		return pickupLocation == 14 or string.find(pickupName, "QuartzWodasoStatue_Pickup_C")
 	elseif string.find(lastTouchedSaveArea, "AreaName_C /Game/Blueprints/Areas/ROS/ROS_Teleporter.ROS_Teleporter") then
-		return pickupLocation == 14
+		return pickupLocation == 14 or string.find(pickupName, "QuartzWodasoStatue_Pickup_C")
 	else 
 		return pickupLocation == 0 or pickupLocation == 7
 	end
@@ -4280,12 +5637,32 @@ function T20.pkOccluded(ex, ey, ez, c)
 	T20.pk.ignore[2] = c.obj
 	-- test 21: the held weapon belongs to its own visuals actor (not the pawn) and often crosses the eye line in VR
 	local okW, wo = pcall(function() return activeWeaponMesh ~= nil and activeWeaponMesh:GetOwner() or nil end)
-	T20.pk.ignore[3] = okW and wo or nil
-	local ok, hit = pcall(kismet_system_library.LineTraceSingle, kismet_system_library, uevrUtils.get_world(), T20.pk.tS, T20.pk.tE, 0, false, T20.pk.ignore, 0, reusable_hit_result, true, aimColor, aimColor, 0.0)
+	local ig, n = T20.pk.ignore, 2
+	if okW and wo ~= nil then n = 3 ig[3] = wo end
+	-- step 130 (headset 21e, user: broken barrels' leftover sides block items inside): skip broken breakables near here
+	local bi = T20.pkBrk.ign
+	for k = 1, bi.n do n = n + 1 ig[n] = bi[k] end
+	for k = n + 1, #ig do ig[k] = nil end
+	local ok, hit = pcall(kismet_system_library.LineTraceSingle, kismet_system_library, uevrUtils.get_world(), T20.pk.tS, T20.pk.tE, 0, false, ig, 0, reusable_hit_result, true, aimColor, aimColor, 0.0)
 	if not ok or not hit then return false end
 	local dx, dy, dz = c.x - ex, c.y - ey, c.z - ez
 	local d = math.sqrt(dx * dx + dy * dy + dz * dz)
-	return reusable_hit_result.Distance < d - math.max(30.0, (c.r or 8.0) * 2.0)
+	local occ = reusable_hit_result.Distance < d - math.max(30.0, (c.r or 8.0) * 2.0)
+	if occ and os.clock() > (T20.pk.occLogT or 0.0) then -- step 130 discovery: what blocks (every 3 s at most)
+		T20.pk.occLogT = os.clock() + 3.0
+		local hd = reusable_hit_result.Distance
+		pcall(function()
+			local gs = T20.rbGs
+			if gs == nil then gs = api:find_uobject("Class /Script/Engine.GameplayStatics"):get_class_default_object() T20.rbGs = gs end
+			local o = {}
+			for k = 1, 17 do o[k] = {} end
+			gs:BreakHitResult(reusable_hit_result, o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8], o[9], o[10], o[11], o[12], o[13], o[14], o[15], o[16], o[17])
+			local a, cp = o[10].result, o[11].result
+			uevr.params.functions.log_info(string.format("[PICKUP] item hidden: blocked at %.0f of %.0f cm by %s / %s (broken breakables ignored: %d)",
+				hd, d, a ~= nil and a:get_class():get_fname():to_string() or "?", cp ~= nil and cp:get_fname():to_string() or "?", T20.pkBrk.ign.n))
+		end)
+	end
+	return occ
 end
 function pickupAssistClear()
 	T20.pkBeamHide()
@@ -4371,7 +5748,8 @@ end
 -- them; the 60 s rescan is too late), and pots also spawn a random Drop at DropLocation (subclass: misses the spawn hook).
 -- Cache breakables (30 s); every 0.5 s check those within 8 m; on a break: add their valid items for 10 s and start
 -- the enemy-drop scan (pkDropW, 8 s, location-0 items within 4 m) at the breakable.
-T20.pkBrk = {list = {}, n = 0, scanT = 0.0, pollT = 0.0}
+T20.pkBrk = {list = {}, n = 0, scanT = 0.0, pollT = 0.0, ign = {n = 0}} -- ign: broken ones within 8 m (step 130, max T20.PK_BRK_IGN)
+T20.PK_BRK_IGN = 6
 T20.PK_BRK_CLASSES = {
 	{"BlueprintGeneratedClass /Game/Props/Containers/Permabreakable_base.Permabreakable_base_C", 1},
 	{"BlueprintGeneratedClass /Game/Props/Pots/Pot_Base.Pot_Base_C", 2},
@@ -4413,6 +5791,9 @@ function T20.pkBreakTick(now)
 	local pawn = api:get_local_pawn(0)
 	if pawn == nil then return end
 	local pl = pawn:K2_GetActorLocation()
+	local bi = B.ign
+	for k = 1, bi.n do bi[k] = nil end
+	bi.n = 0
 	for k = 1, B.n do
 		local e = B.list[k]
 		local dx, dy, dz = e.x - pl.X, e.y - pl.Y, e.z - pl.Z
@@ -4428,6 +5809,7 @@ function T20.pkBreakTick(now)
 					end
 				end
 				e.was = br
+				if br and bi.n < T20.PK_BRK_IGN then bi.n = bi.n + 1 bi[bi.n] = e.a end -- step 130
 				if e.brokenT ~= nil then
 					local items = e.a.ActorsToActivateOnBreak
 					for _, p in ipairs(items or {}) do
@@ -4465,7 +5847,11 @@ function pickupAssistTick()
 		T20.pkRescanT = now + (dt > 0.004 and 60.0 or 10.0)
 		if not T20.pkRescanLogged then T20.pkRescanLogged = true uevr.params.functions.log_info(string.format("[PICKUP] rescan %.1f ms, %d items", dt * 1000, #currentLevelPickables)) end
 	end
-	local hand = controllers.getController(0, true) or controllers.getController(0)
+	-- step 117 (headset 2026-11-19c): aim with the right index (X grabs; the left hand aims knives)
+	local right = configui.getValue("pickup_right_hand2") ~= false -- step 118: always the right hand while on
+	if right ~= T20.pkAimRight then T20.pkAimRight = right T20.pk.target = nil end
+	local hand = right and (controllers.getController(1, true) or controllers.getController(1))
+		or (controllers.getController(0, true) or controllers.getController(0))
 	if hand == nil then pickupAssistClear() currentAvailablePickable = nil return end
 	local hp = hand:K2_GetComponentLocation()
 	local hd = hand:GetForwardVector()
@@ -4480,6 +5866,9 @@ function pickupAssistTick()
 		T20.pkRefresh(ex, ey, ez)
 	end
 	local rangeSave = T20.pk.opts.range
+	if right and not T20.xRaw then -- step 118: what the right index points at now decides who gets the next X press
+		T20.pkAimHit = T20.pickup.select(T20.pk.cands, T20.pk.n, hp.X, hp.Y, hp.Z, hd.X, hd.Y, hd.Z, ex, ey, ez, T20.pk.target, T20.pk.opts) ~= nil
+	elseif not right then T20.pkAimHit = false end
 	if T20.beamOnX() and (not T20.xRaw or T20.xGame) then T20.pk.opts.range = 0.0 end -- step 29: no ray targets (beam) unless X is held; hand-at-item still works
 	local i, score = T20.pickup.select(T20.pk.cands, T20.pk.n, hp.X, hp.Y, hp.Z, hd.X, hd.Y, hd.Z, ex, ey, ez, T20.pk.target, T20.pk.opts)
 	T20.pk.opts.range = rangeSave
@@ -4496,7 +5885,7 @@ function pickupAssistTick()
 	local obj = c ~= nil and c.obj or nil
 	if obj ~= T20.pk.target then
 		if obj ~= nil then
-			uevrUtils.triggerHapticVibration(Handed.Left, 0, 0.06, 250, 0.45)
+			uevrUtils.triggerHapticVibration(right and Handed.Right or Handed.Left, 0, 0.06, 250, 0.45)
 			local nm = "?"
 			pcall(function() nm = obj:get_fname():to_string() end)
 			uevr.params.functions.log_info(string.format("[PICKUP] target %s dist=%.0f", nm, math.sqrt((c.x - ex) ^ 2 + (c.y - ey) ^ 2 + (c.z - ez) ^ 2)))
@@ -4507,7 +5896,7 @@ function pickupAssistTick()
 	if c == nil then pickupSnap = nil T20.pkBeamHide() return end
 	T20.pk.snap.X, T20.pk.snap.Y, T20.pk.snap.Z = c.x, c.y, c.z
 	pickupSnap = T20.pk.snap
-	if configui.getValue("pickup_beam") ~= false then
+	if configui.getValue("pickup_beam_ray") == true then
 		T20.pkBeamPlace(hp.X + hd.X * 5.0, hp.Y + hd.Y * 5.0, hp.Z + hd.Z * 5.0, c.x, c.y, c.z)
 	else
 		T20.pkBeamHide()
@@ -4590,6 +5979,8 @@ function getPickupGripOffsets(pickup)
 		return {X = -11, Y = 3, Z = -3}, {Yaw = 48, Roll = -84, Pitch = -30}
 	elseif string.find(pickupName, "Coin_Item_BP_C") then
 		return {X = 1, Y = -7, Z = -6}, {Yaw = 214, Roll = -8, Pitch = -86}
+	elseif string.find(pickupName, "Coin_Shimmer_BP_C") then
+		return {X = 1, Y = -7, Z = -6}, {Yaw = 214, Roll = -8, Pitch = -86}		
 	elseif string.find(pickupName, "Knifebelt_Pickup_C") then
 		return {X = 1, Y = -7, Z = -3}, {Yaw = 207, Roll = 57, Pitch = 3}
 	elseif string.find(pickupName, "FinalClaw_Pickup_BP_C") then
@@ -4683,7 +6074,9 @@ function getPickupGripOffsets(pickup)
 	elseif string.find(pickupName, "BookKey_00_Wodaso_BP_C") then
 		return {X = 5, Y = -6, Z = -8}, {Yaw = 124, Roll = 66, Pitch = 203}	
 	elseif string.find(pickupName, "BookKey_00_BoneMachines_BP_C") then
-		return {X = 5, Y = -6, Z = -8}, {Yaw = 124, Roll = 66, Pitch = 203}			
+		return {X = 5, Y = -6, Z = -8}, {Yaw = 124, Roll = 66, Pitch = 203}	
+	elseif string.find(pickupName, "BookKey_00_FairyTales_BP_C") then
+		return {X = 5, Y = -6, Z = -8}, {Yaw = 124, Roll = 66, Pitch = 203}	
 	elseif string.find(pickupName, "GenieLamp_Pickup_C") then
 		return {X = 5, Y = -6, Z = -8}, {Yaw = 124, Roll = 66, Pitch = 203}		 
 	elseif string.find(pickupName, ".Spear_Pickup_C") then
@@ -4769,6 +6162,8 @@ function getPickupGripOffsets(pickup)
 		return {X = 4, Y = -6, Z = -18}, {Yaw = 281, Roll = 158, Pitch = 168}
 	elseif string.find(pickupName, "Castle_Key_Cup_BP_C") then
 		return {X = 4, Y = -7, Z = -18}, {Yaw = 273, Roll = 168, Pitch = 74}
+	elseif string.find(pickupName, "Castle_Key_Wand_BP_C") then
+		return {X = 4, Y = -8, Z = -11}, {Yaw = 273, Roll = 168, Pitch = 74}
 	elseif string.find(pickupName, "Castle_Key_") then
 		return {X = 4, Y = -7, Z = -18}, {Yaw = 273, Roll = 168, Pitch = 74}
 	elseif string.find(pickupName, "MPCure_Pickup_Bp_C") then
@@ -4783,6 +6178,10 @@ function getPickupGripOffsets(pickup)
 		return {X = 6, Y = -5, Z = -14}, {Yaw = 296, Roll = 186, Pitch = -106}
 	elseif string.find(pickupName, "DropChanceAmulet_Pickup_C") then
 		return {X = 6, Y = -5, Z = -14}, {Yaw = 296, Roll = 97, Pitch = -106}
+	elseif string.find(pickupName, "RegenerationAmulet_Pickup_C") then
+		return {X = 6, Y = -5, Z = -14}, {Yaw = 296, Roll = 97, Pitch = -106}
+	elseif string.find(pickupName, "Amulet_Pickup_C") then
+		return {X = 6, Y = -5, Z = -14}, {Yaw = 296, Roll = 97, Pitch = -106}	
 	elseif string.find(pickupName, "Skullrod_Pickup_C") then
 		return {X = 1, Y = -8, Z = -2}, {Yaw = 161, Roll = 88, Pitch = 173}
 	elseif string.find(pickupName, "CellPhone_Pickup_C") then
@@ -4792,7 +6191,75 @@ function getPickupGripOffsets(pickup)
 	elseif string.find(pickupName, "MechArm_Pickup_C") then
 		return {X = -1, Y = 0, Z = -1}, {Yaw = 116, Roll = -172, Pitch = -10}
 	elseif string.find(pickupName, "PandoraBlade_Pickup_C") then
-		return {X = -3, Y = -8, Z = -2}, {Yaw = -97, Roll = -179, Pitch = -10}		
+		return {X = -3, Y = -8, Z = -2}, {Yaw = -97, Roll = -179, Pitch = -10}
+	elseif string.find(pickupName, "GoldCrab_Pickup_C") then
+		return {X = -4, Y = 4, Z = 10}, {Yaw = -61, Roll = -179, Pitch = -16}
+	elseif string.find(pickupName, "GoldSipehaStatue_Pickup_C") then
+		return {X = -22, Y = 8, Z = -14}, {Yaw = -27, Roll = 360, Pitch = -81}
+	elseif string.find(pickupName, "Fish_UpgradePickup_C") then
+		return {X = 1, Y = -15, Z = -15}, {Yaw = 273, Roll = -5, Pitch = 74}
+	elseif string.find(pickupName, "Clam_Upgrade_Pickup_C") then
+		return {X = 1, Y = -15, Z = -15}, {Yaw = 273, Roll = -5, Pitch = 74}
+	elseif string.find(pickupName, "Meat_Upgrade_Pickup_C") then
+		return {X = 1, Y = -15, Z = -15}, {Yaw = 273, Roll = -5, Pitch = 74}
+	elseif string.find(pickupName, "SniperGun_Pickup_C") then
+		return {X = 2, Y = -11, Z = -3}, {Yaw = 275, Roll = 90, Pitch = 75}
+	elseif string.find(pickupName, "PuwemaGoldStatueTreasure_Pickup_C") then
+		return {X = -4, Y = -8, Z = -9}, {Yaw = 275, Roll = 90, Pitch = 75}
+	elseif string.find(pickupName, "SpikeBall_Pickup_C") then
+		return {X = -4, Y = -4, Z = -5}, {Yaw = 275, Roll = 90, Pitch = 21}
+	elseif string.find(pickupName, "GunChargeCharm_Pickup_C") then
+		return {X = -4, Y = -4, Z = -3}, {Yaw = 275, Roll = 85, Pitch = -8}
+	elseif string.find(pickupName, "GoldWodasoStatue_Pickup_C") then
+		return {X = -1, Y = -7, Z = 1}, {Yaw = 275, Roll = 85, Pitch = -131}
+	elseif string.find(pickupName, "KingsCrest_Pickup_C") then
+		return {X = -19, Y = -3, Z = 11}, {Yaw = 275, Roll = 152, Pitch = -67}
+	elseif string.find(pickupName, "RaiderNecklace_Pickup_C") then
+		return {X = 2, Y = -11, Z = -11}, {Yaw = 275, Roll = 61, Pitch = -112}
+	elseif string.find(pickupName, "RottenChalice_Pickup_C") then
+		return {X = 2, Y = -8, Z = -1}, {Yaw = 275, Roll = 61, Pitch = -112}
+	elseif string.find(pickupName, "DAquaDoorKey_BP_C") then
+		return {X = 2, Y = -8, Z = -1}, {Yaw = 275, Roll = 61, Pitch = -112}
+	elseif string.find(pickupName, "GenieLamp_2_Pickup1_C") then
+		return {X = -18, Y = -9, Z = -18}, {Yaw = 12, Roll = -10, Pitch = -97}
+	elseif string.find(pickupName, "Zweihander_Pickup_C") then
+		return {X = 10, Y = -9, Z = -2}, {Yaw = 12, Roll = 72, Pitch = -94}
+	elseif string.find(pickupName, "JIgeki_Key_2_BP_C") then
+		return {X = 17, Y = 10, Z = -2}, {Yaw = 2, Roll = -7, Pitch = -88}
+	elseif string.find(pickupName, "JosamiSword_Pickup_C") then
+		return {X = 2, Y = -7, Z = -2}, {Yaw = 2, Roll = 43, Pitch = -62}
+	elseif string.find(pickupName, "CharmingJar_2_Pickup_C") then
+		return {X = -4, Y = -4, Z = -10}, {Yaw = -3, Roll = -64, Pitch = -75}
+	elseif string.find(pickupName, "RuneVisionUnlock3_Pickup_C") then
+		return {X = -4, Y = -4, Z = -9}, {Yaw = 192, Roll = 97, Pitch = -106}
+	elseif string.find(pickupName, "TimeSpellPocketWatch_Pickup_C") then
+		return {X = 3, Y = -1, Z = -14}, {Yaw = 192, Roll = 97, Pitch = -106}
+	elseif string.find(pickupName, "RustedGreatSword_Pickup_C") then
+		return {X = 4, Y = -9, Z = -2}, {Yaw = 192, Roll = 235, Pitch = -96}
+	elseif string.find(pickupName, "JosamiEgg_2_Pickup1_C") then
+		return {X = 4, Y = -9, Z = -12}, {Yaw = 192, Roll = 164, Pitch = -95}
+	elseif string.find(pickupName, "FancyCompass_2_Pickup1_C") then
+		return {X = 5, Y = -30, Z = -20}, {Yaw = 172, Roll = 265, Pitch = -92}
+	elseif string.find(pickupName, "BindResistCharm_Pickup_C") then
+		return {X = 5, Y = -9, Z = -11}, {Yaw = 172, Roll = 265, Pitch = -92}
+	elseif string.find(pickupName, "FinalClaw_Pickup_BP_C") then
+		return {X = 5, Y = -9, Z = -11}, {Yaw = 172, Roll = 265, Pitch = -92}
+	elseif string.find(pickupName, "Ros_Orb_BP_C") then
+		return {X = -6, Y = -10, Z = -21}, {Yaw = 172, Roll = 265, Pitch = -92}
+	elseif string.find(pickupName, "GrimoireInk_Pickup_C") then
+		return {X = -15, Y = -8, Z = -3}, {Yaw = 96, Roll = 270, Pitch = -53}
+	elseif string.find(pickupName, "RitualSkull_2_Pickup1_C") then
+		return {X = -3, Y = -8, Z = -14}, {Yaw = 74, Roll = 213, Pitch = -74}
+	elseif string.find(pickupName, "QuartzWodasoStatue_Pickup_C") then
+		return {X = -4, Y = 1, Z = -1}, {Yaw = 98, Roll = 208, Pitch = -74}
+	elseif string.find(pickupName, "PlasmaRifle_Pickup_C") then
+		return {X = -12, Y = 15, Z = -7}, {Yaw = 27, Roll = 201, Pitch = -141}
+	elseif string.find(pickupName, "JIgeki_Key_1_BP_C") then
+		return {X = 3, Y = -11, Z = -3}, {Yaw = 27, Roll = 262, Pitch = -141}
+	elseif string.find(pickupName, "FishMaidenTiara") then
+		return {X = 18, Y = 0, Z = -12}, {Yaw = 17, Roll = 272, Pitch = -91}
+	elseif string.find(pickupName, "PuwemaJadeStatue_Treasure_Pickup_C") then
+		return {X = -14, Y = 22, Z = -8}, {Yaw = 17, Roll = 269, Pitch = 6}	 
 	else		
 		return {X = configui.getValue("loc_x"),Y = configui.getValue("loc_y"), Z = configui.getValue("loc_z")},{Yaw = configui.getValue("rot_yaw"), Roll = configui.getValue("rot_roll"), Pitch = configui.getValue("rot_pitch")}, true -- test 21: true = no tuned grip
 	end
@@ -4811,6 +6278,13 @@ function applyPickupFinalGripTransform(mesh, gripLocation, gripRotation)
 	end
 end
 
+-- step 123 (user 2026-11-20d: hide the flat "item comes to you" showcase in VR; the item already flew into the hand)
+function T20.pkHideShowcase(mesh)
+	if mesh == nil or configui.getValue("pickup_hide_showcase") == false then return end
+	mesh:SetVisibility(false, true)
+	mesh:SetHiddenInGame(true, true)
+	uevr.params.functions.log_info("[PICKUP] showcase hidden")
+end
 function cancelCurrentPickupFlyIn()
 	uevrUtils.cancelLerp(pickupFlyLerpID)
 	pickupFlyState = nil
@@ -4826,6 +6300,16 @@ local function pickupFlyInCallback(alpha, progress, state)
 
 	if state.mesh == nil then --the pickup got destroyed while we were flying
 		pickupFlyState = nil
+		return
+	end
+	-- step 123 (headset 2026-11-20d: items orbited in front of the eyes, one stayed until the next pickup): the game
+	-- re-parents the mesh to its showcase pivot mid fly-in; our relative lerp then kept writing hand-relative offsets
+	-- under the spinning pivot. Stop (the lerp runs out unused) and hide the showcase.
+	local okP, pa = pcall(function() local p = state.mesh.AttachParent return p ~= nil and p:get_address() or 0 end)
+	if okP and state.parentAddr ~= nil and pa ~= state.parentAddr then
+		pickupFlyState = nil
+		uevr.params.functions.log_info("[PICKUP] fly-in stopped: the game re-parented the mesh")
+		pcall(T20.pkHideShowcase, state.mesh)
 		return
 	end
 
@@ -4873,14 +6357,54 @@ function startPickupLerpMovement(mesh, gripLocation, gripRotation)
 		fromRotation = mesh.RelativeRotation,
 		toRotation = gripRotation
 	}
+	pcall(function() local p = mesh.AttachParent pickupFlyState.parentAddr = p ~= nil and p:get_address() or 0 end) -- step 123
 	--uevrUtils.lerp(lerpID, startAlpha, endAlpha, duration, userdata, callback(alpha, progress, userData = pickupFlyState))
 	uevrUtils.lerp(pickupFlyLerpID, 0.0, 1.0, pickupFlyDuration, pickupFlyState, pickupFlyInCallback)
 
 end
 
 
+-- step 117: the targeted item flies into the right hand: attached to the right controller keeping its world transform and
+-- rotation, its bounds centre (snap point c0) lerped onto the grab point (grab_point_fwd ahead of the controller),
+-- shrunk like the auto hold. Returns true when the fly-in started.
+function T20.pkAttachRight(mesh, c0)
+	local ctrl = controllers.getController(1)
+	if ctrl == nil then return false end
+	if c0 == nil then local l = mesh:K2_GetComponentLocation() c0 = {X = l.X, Y = l.Y, Z = l.Z} end
+	mesh:K2_AttachToComponent(ctrl, uevrUtils.fname_from_string(""), 1, 1, 1, true)
+	local t = ctrl:K2_GetComponentToWorld()
+	local cr = kismet_math_library:InverseTransformLocation(t, uevrUtils.vector(c0.X, c0.Y, c0.Z))
+	local l0 = mesh.RelativeLocation
+	local dx, dy, dz = cr.X - l0.X, cr.Y - l0.Y, cr.Z - l0.Z
+	local s0 = mesh.RelativeScale3D.X
+	if type(s0) ~= "number" or s0 <= 0 then s0 = 1.0 end
+	local sc = s0
+	pcall(function()
+		local b = mesh.StaticMesh:GetBounds()
+		local _, _, s = T20.grip.pickupHold(b.Origin, b.BoxExtent, {scale = s0})
+		if type(s) == "number" and s > 0 then sc = s end
+	end)
+	local k = sc / s0
+	local fwd = configui.getValue("grab_point_fwd")
+	if type(fwd) ~= "number" then fwd = 7.0 end
+	local r0 = mesh.RelativeRotation
+	startPickupLerpMovement(mesh, {X = fwd - dx * k, Y = -dy * k, Z = -dz * k}, {Pitch = r0.Pitch, Yaw = r0.Yaw, Roll = r0.Roll})
+	if sc ~= s0 and pickupFlyState ~= nil then
+		pickupFlyState.fromScale, pickupFlyState.toScale, pickupFlyState.sv = s0, sc, {X = 1.0, Y = 1.0, Z = 1.0}
+	end
+	T20.pkHeldParent = ctrl
+	mesh:SetRenderInMainPass(true)
+	mesh:SetRenderCustomDepth(true)
+	uevr.params.functions.log_info(string.format("[PICKUP] fly-in to the right hand (centre offset %.0f cm, scale %.2f->%.2f)",
+		math.sqrt(dx * dx + dy * dy + dz * dz), s0, sc))
+	return true
+end
+
 function attachPickableToHand()
 	local pickup = currentAvailablePickable
+	local right = T20.pkAimRight == true -- step 117: fly into the right hand (aimed with it)
+	local snapC = (right and pickupSnap ~= nil) and {X = pickupSnap.X, Y = pickupSnap.Y, Z = pickupSnap.Z} or nil
+	T20.pkHeldParent = nil
 	if pickupAssistClear ~= nil then pcall(pickupAssistClear) end -- test 20: hide the beam while the item is held
 
 	
@@ -4923,6 +6447,16 @@ function attachPickableToHand()
 	pickup:SetReplicateMovement(false)
 	pickup.RootComponent:SetShouldUpdatePhysicsVolume(false)
 	
+	if right then
+		local okR, rr = pcall(T20.pkAttachRight, mesh, snapC)
+		if okR and rr then
+			currentPickup = pickup
+			currentPickupMesh = mesh
+			return
+		end
+		T20.pkHeldParent = nil
+		uevr.params.functions.log_info("[PICKUP] right-hand fly-in failed, left hand: " .. tostring(rr))
+	end
 	local leftHandComponent = hands.getHandComponent(Handed.Left)
 	--attachments.attachToMesh(mesh, leftHandComponent, "hand_l", Handed.Left, defaultAttachOptions)
 	--[[
@@ -4948,11 +6482,15 @@ function attachPickableToHand()
 		--string.find(pickup:get_full_name(), "StickyCure_Pickup_Bp_C") or
 		--string.find(pickup:get_full_name(), "DiseaseCure_Pickup_Bp_C") 
 	then
+		mesh.RelativeScale3D = {X = 0.550, Y =0.550, Z= 0.550}	
 	elseif string.find(pickup:get_full_name(), "BookKey_00_WarHistory_BP_C") or
 		string.find(pickup:get_full_name(), "BookKey_00_QueerRomance_BP_C") or
 		string.find(pickup:get_full_name(), "BookKey_00_Wodaso_BP_C") or
 		string.find(pickup:get_full_name(), "BookKey_00_BoneMachines_BP_C") or
-		string.find(pickup:get_full_name(), "BookKey_00_CookBook_BP_C")	then
+		string.find(pickup:get_full_name(), "BookKey_00_CookBook_BP_C") or 
+		string.find(pickup:get_full_name(), "BookKey_00_Puwema_BP_C") or
+		string.find(pickup:get_full_name(), "BookKey_00_FairyTales_BP_C") then
+		
 		mesh.RelativeScale3D = {X = 0.250, Y =0.250, Z= 0.250}	
 	elseif string.find(pickup:get_full_name(), "Slashgun_Pickup_C") or string.find(pickup:get_full_name(), "ElecGun_Pickup_C") then
 		mesh.RelativeScale3D = {X = 0.500, Y =0.500, Z= 0.500}	
@@ -4993,6 +6531,7 @@ function attachPickableToHand()
 	if activeLeftWeaponMesh ~= nil then
 		activeLeftWeaponMesh:SetRenderInMainPass(false)
 		activeLeftWeaponMesh:SetRenderCustomDepth(false)
+		pcall(T20.kmvKids, activeLeftWeaponMesh, false) -- step 60: extra mesh parts too
 	end
 	print("attached pickable to hand", currentAvailablePickable:get_full_name())
 	currentPickup = pickup
@@ -5021,11 +6560,13 @@ function checkIfPickablePickedup()
 		local gameTook = false
 		pcall(function()
 			local par = currentPickupMesh.AttachParent
-			gameTook = par ~= nil and par ~= hands.getHandComponent(Handed.Left) and (o == nil or par ~= o.parent)
+			gameTook = par ~= nil and par ~= (T20.pkHeldParent or hands.getHandComponent(Handed.Left)) and (o == nil or par ~= o.parent)
 		end)
 		if gameTook then
 			if o ~= nil and o.mesh == currentPickupMesh then pcall(function() currentPickupMesh:SetRelativeScale3D(o.scale) end) end
 			uevr.params.functions.log_info("[PICKUP] mesh taken by the game's pickup display")
+			if pickupFlyState ~= nil and pickupFlyState.mesh == currentPickupMesh then pickupFlyState = nil end -- step 123
+			pcall(T20.pkHideShowcase, currentPickupMesh)
 			o = nil
 		else
 		currentPickupMesh:K2_DetachFromComponent(
@@ -5052,6 +6593,8 @@ function checkIfPickablePickedup()
 		if activeLeftWeaponMesh ~= nil then
 			activeLeftWeaponMesh:SetRenderInMainPass(true)
 			activeLeftWeaponMesh:SetRenderCustomDepth(true)
+			if configui.getValue("hide_knife_model") == false then pcall(T20.kmvKids, activeLeftWeaponMesh, true) end
+			T20.kmvT = 0
 		end
 	
 		currentPickupMesh = nil
@@ -5093,6 +6636,7 @@ function on_level_change(level)
     --currentAreaMusic = getCurrentAreaMusic()
 	lastTouchedSaveArea = nil
 	if T20.belt ~= nil then pcall(T20.belt.reset) end
+	if T20.throw ~= nil then pcall(T20.throw.reset) end -- step 64
 	if T20.knives ~= nil then pcall(T20.knives.reset) end -- step 37 -- test 21: belt cards die with the level
 	T20.pkDrops = {} -- step 19
 	T20.pkBrk.list, T20.pkBrk.n, T20.pkBrk.scanT = {}, 0, 0.0 -- step 28

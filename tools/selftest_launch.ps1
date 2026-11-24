@@ -3,8 +3,15 @@
 # Stop everything: powershell -File tools\selftest_launch.ps1 -Stop
 param([switch]$NoSteamVR, [switch]$NoInject, [switch]$Stop)
 $game = "QueensDomain-Win64-Shipping"
-$uevr = "F:\Mods\UEVR\uevrAug302026\UEVRInjector.exe"
-$vrstartup = "F:\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe"
+# Paths come from environment variables (see README.md, "Dev tools"):
+#   QD_UEVR_DIR  folder holding UEVRInjector.exe (required unless -NoInject)
+#   QD_STEAM     Steam root (default: registry SteamPath, else %ProgramFiles(x86)%\Steam)
+#   QD_STEAMVR   SteamVR folder (default: <Steam root>\steamapps\common\SteamVR)
+$SteamRoot = if ($env:QD_STEAM) { $env:QD_STEAM } else { $r = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam' -ErrorAction SilentlyContinue).SteamPath; if ($r) { $r } else { Join-Path ${env:ProgramFiles(x86)} 'Steam' } }
+$vrDir = if ($env:QD_STEAMVR) { $env:QD_STEAMVR } else { Join-Path $SteamRoot 'steamapps\common\SteamVR' }
+$vrstartup = Join-Path $vrDir 'bin\win64\vrstartup.exe'
+$uevr = if ($env:QD_UEVR_DIR) { Join-Path $env:QD_UEVR_DIR 'UEVRInjector.exe' } else { $null }
+if (-not $NoInject -and -not $uevr -and -not $Stop) { Write-Output 'Set QD_UEVR_DIR to the folder that holds UEVRInjector.exe (or pass -NoInject)'; exit 1 }
 
 if ($Stop) {
     Get-Process -Name $game -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -39,6 +46,7 @@ if (-not $NoInject) {
     if ($loaded) { Write-Output "UEVR already injected" }
     else {
         Get-Process -Name UEVRInjector -ErrorAction SilentlyContinue | Stop-Process -Force  # only ever one injector
+        $env:__COMPAT_LAYER = "RunAsInvoker"  # user flags the injector RUNASADMIN; non-elevated works, no UAC
         Start-Process $uevr -ArgumentList "--attach=$game.exe" -WorkingDirectory (Split-Path $uevr)
         $t = 0
         while ($t -lt 60) {

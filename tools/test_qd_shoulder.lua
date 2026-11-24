@@ -51,5 +51,18 @@ do -- step 38: region "past the shoulder" (head at 0,0,100 facing +X; right = +Y
 	check("left zone ignores the right side", not m.inZone(-10, 25, 90, 0, 0, 100, 0, -1))
 	check("yaw 90: right = -X", m.inZone(-25, -10, 95, 0, 0, 100, 90, 1) and not m.inZone(25, -10, 95, 0, 0, 100, 90, 1))
 end
+do -- step 86: near-zone margin
+	check("nearZone: inside zone", m.nearZone(0, 20, -5, 15))
+	check("nearZone: outside lateral, within margin", m.nearZone(0, m.LAT_MIN_CM - 5, 0, 8) and not m.nearZone(0, m.LAT_MIN_CM - 5, 0, 0))
+	check("nearZone: far from the zone", not m.nearZone(0, -5, 0, 8) and not m.nearZone(60, 20, 0, 8))
+	check("nearZone: too low even with margin", not m.nearZone(0, 20, -(m.LOW_CM + 20), 15))
+	check("handNear off without init", m.handNear(true) == false)
+end
+check("s92 restLock in zone at rest", m.restLock(false, true, 5) == true)
+check("s92 restLock pull keeps", m.restLock(true, false, 150) == true and m.restLock(false, true, 150) == false)
+do -- step 97: weapon held out to the side at medium height (30 cm below the eyes) is not a switch; at the shoulder it is
+	check("side at medium height out", not m.inZone(0, 30, 70, 0, 0, 100, 0))
+	check("side at shoulder height in", m.inZone(0, 20, 82, 0, 0, 100, 0))
+end
 print(string.format("qd_shoulder: %d passed, %d failed", passed, failed))
 return failed

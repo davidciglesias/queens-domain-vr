@@ -7,7 +7,7 @@ y|b = dpad_right; trigger/grip click derived (>=0.9 on, <0.8 off). Bumper also f
 - `powershell -ExecutionPolicy Bypass -File tools\fakevr\fakevr.ps1 on|off|status`. Refuses while SteamVR runs. `on` = one-time
   backup to `backup\steamvr.vrsettings.orig` + vrpathreg adddriver + steamvr.forcedDriver=qdfake, activateMultipleDrivers=true.
   `off` restores both keys + removedriver. SteamVR also writes LastKnown/GpuSpeed, so copy the backup back for a byte-exact restore.
-- Start SteamVR **non-elevated**: `explorer.exe F:\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe`. Claude Code shells are
+- Start SteamVR **non-elevated**: `explorer.exe "<SteamVR>\bin\win64\vrstartup.exe"` (`<SteamVR>` = `QD_STEAMVR`, default `<Steam>\steamapps\common\SteamVR`; `QD_STEAM` overrides the Steam root). Claude Code shells are
   elevated. Elevated SteamVR loses vrwebhelper and its IPC namespace, and clients fail with InitError_IPC_NamespaceUnavailable.
   Stop: Stop-Process vrmonitor,vrserver,vrcompositor,vrdashboard,vrwebhelper.
 - Verify: `venv\Scripts\python.exe verify.py all` (pyopenvr in `venv\`).
