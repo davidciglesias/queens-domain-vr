@@ -19,11 +19,15 @@ Built for [UEVR](https://github.com/praydog/UEVR) by praydog (MIT; a separate pr
 is not included.
 
 ## UEVR Lua libraries (`scripts/libs`)
-The profile depends on the community UEVR Lua utility libraries
-(`uevr_utils`, `hands`, `attachments`, `interaction`, etc.), whose headers credit
-contributions from markmon, Pande4360, Rusty Gere and lobotomy. They are not
-included in this repository (they ship with the profile); they remain the
-property of their authors under their own terms.
+The release bundles the community UEVR Lua utility libraries (`uevr_utils`, `hands`,
+`attachments`, `interaction`, etc.) from [jbusfield/uevrlib](https://github.com/jbusfield/uevrlib),
+Copyright (c) 2025 jbusfield, under the MIT License. The full license text is in
+[`licenses/uevrlib-MIT.txt`](licenses/uevrlib-MIT.txt). Their headers credit contributions from
+markmon, Pande4360, Rusty Gere and lobotomy, which remain with those authors. These libraries are
+not part of this repository's source; the release zip carries them.
+
+## Native plugins
+The release does not include or require the base profile's native plugin `uevr_utils.dll`. The mod runs without it.
 
 ## Reference projects
 - [Crementif/BotW-BetterVR](https://github.com/Crementif/BotW-BetterVR) (MIT): slash/stab detection approach; code may be reused (MIT is AGPL-compatible). Any copied or ported code keeps its copyright notice (see below).

@@ -48,3 +48,6 @@ tools/*.bak_*
 
 # Personal convenience launcher (dev-only, double-click helper)
 RESTORE_REAL_HEADSET.cmd
+
+# Release builds (zip output)
+dist/

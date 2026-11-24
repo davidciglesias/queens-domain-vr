@@ -17,16 +17,19 @@ Version 0.1.
 
 - Queen's Domain (Steam) and a working VR setup in SteamVR.
 - UEVR, installed separately.
-- The Queen's Domain UEVR base profile, which supplies the utility libraries this mod builds on.
-  See [ATTRIBUTIONS.md](ATTRIBUTIONS.md). This repository holds only the mod's own scripts.
+No native plugins are needed: the release is pure Lua.
 
 ## Install
 
-1. Install the base profile for Queen's Domain in UEVR so its folder exists at
-   `%APPDATA%\UnrealVRMod\QueensDomain-Win64-Shipping\`.
-2. Copy the contents of `QueensDomain-Win64-Shipping\scripts\` from this repository over
-   `%APPDATA%\UnrealVRMod\QueensDomain-Win64-Shipping\scripts\`, keeping the `libs` folder structure.
-3. Start SteamVR, launch the game, and inject with UEVR.
+The release zip, `QueensDomain-Win64-Shipping.zip`, is a UEVR profile: the mod scripts, the bundled Lua libraries and their data.
+
+1. Open UEVR's injector and click **Import Config**. Select `QueensDomain-Win64-Shipping.zip`. Leave it as a zip; do not extract it.
+2. Start SteamVR, launch the game, and inject with UEVR.
+
+Import adds files to the existing profile rather than replacing it. When upgrading, delete the old `scripts` folder first.
+Your saved panel values (`user_configuration.json`) are not in the zip, so they are kept.
+
+Building from source: the repository holds only the mod's own scripts; the libraries come from the zip.
 
 ## Dev tools
 
@@ -42,6 +45,12 @@ These are for development and are not needed to play.
 - **Fake headset** (`tools/fakevr/`): a scripted test headset for SteamVR. See [tools/fakevr/README.md](tools/fakevr/README.md).
   Its scripts honour the same `QD_STEAM` and `QD_STEAMVR` variables.
 - **Screenshots** (`tools/screenshot.ps1`): captures the game window as a downscaled JPEG.
+- **Release build** (`python tools/build_release.py`): writes `dist/QueensDomain-Win64-Shipping.zip` with the developer bridge stripped.
+
+## Known limitations
+
+- Aim assist uses visibility traces only. The object-type trace fails on the UEVR build tested, so it is switched off for the session.
+- Tested on a fake headset with the title, file select and in-world views, plus the inventory and ranged fire. Full melee and belt testing is still on the test sheet.
 
 ## Legal
 
