@@ -4,7 +4,8 @@
 -- Copyright (C) 2026 Queen's Domain VR contributors. AGPL-3.0 (see LICENSE).
 local M = {}
 
-M.MAX = 5
+M.MAX = 7 -- cuff row copies (throwables can hold up to 7 charges)
+M.FINGER_MAX = 5 -- finger mode has five finger bones
 -- step 47: some throwables hold 5 charges -> 5th knife on the thumb side of the index finger (SIDE -1 mirrors the x offset)
 M.FINGERS = { "Index", "Middle", "Ring", "Pinky", "Index" }
 M.SIDE = { 1, 1, 1, 1, -1 }
@@ -392,12 +393,12 @@ local function ensureComps(hand, src)
 		pcall(function() local sc = src:K2_GetComponentToWorld().Scale3D if sc ~= nil and sc.X > 0 then S.baseScale = sc.X end end)
 		S.mesh, S.hand, S.handObj, S.tune = ma, ha, hand, nil
 		local bones = 0
-		for i = 1, M.MAX do
+		for i = 1, M.FINGER_MAX do
 			pcall(function() if hand:GetBoneIndex(D.uevrUtils.fname_from_string(M.boneName(i, 0))) >= 0 then bones = bones + 1 end end)
 		end
 		local hx = -1
 		pcall(function() local b = src:GetLocalBounds() hx = (b.Max.X - b.Min.X) end)
-		log(string.format("knives created: %d comps, finger bones found %d/" .. M.MAX .. ", base scale %.3f, local bounds X %.1f", #S.comps, bones, S.baseScale, hx))
+		log(string.format("knives created: %d comps, finger bones found %d/" .. M.FINGER_MAX .. ", base scale %.3f, local bounds X %.1f", #S.comps, bones, S.baseScale, hx))
 	end
 	return true
 end
@@ -452,8 +453,8 @@ function M.tick(dt, active)
 	-- step 59: with left_hand_hidden the main script hides the hand mesh alone (bVisible false); the knives stay
 	local lhOpt = D.configui.getValue("left_hand_hidden") == true
 	pcall(function() handHidden = hand.bHiddenInGame == true or (hand.bVisible == false and not lhOpt) end)
-	local n = handHidden and 0 or M.visibleCount(count, M.MAX)
-	local nRow = S.tuneNow.fa == 1 and M.rowCount(S.maxCharges) or M.MAX
+	local n = handHidden and 0 or M.visibleCount(count, S.tuneNow.fa == 1 and M.MAX or M.FINGER_MAX)
+	local nRow = S.tuneNow.fa == 1 and M.rowCount(S.maxCharges) or M.FINGER_MAX
 	-- step 116 (headset 2026-11-19b): the cuff row follows the forearm, not the wrist (shared qd_armhud anchor)
 	local anc = nil
 	local ah = D.armhud ~= nil and D.armhud() or nil

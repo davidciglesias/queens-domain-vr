@@ -7,7 +7,8 @@ do -- visible count
 	check("nil -> 0", m.visibleCount(nil) == 0)
 	check("neg -> 0", m.visibleCount(-2) == 0)
 	check("2 -> 2", m.visibleCount(2) == 2)
-	check("cap 5", m.visibleCount(9) == 5)
+	check("cap = MAX", m.visibleCount(9) == m.MAX and m.MAX == 7)
+	check("finger cap 5", m.FINGER_MAX == 5 and m.visibleCount(9, m.FINGER_MAX) == 5)
 	check("cap custom", m.visibleCount(9, 3) == 3)
 	check("float floors", m.visibleCount(2.7) == 2)
 end
@@ -42,7 +43,7 @@ end
 
 do -- step 75: forearm row
 	check("arm row centred", m.armLateral(3, 5, 1.8) == 0 and m.armLateral(1, 5, 1.8) == 3.6 and m.armLateral(5, 5, 1.8) == -3.6)
-	check("row count = max charges", m.rowCount(2) == 2 and m.rowCount(0) == m.MAX and m.rowCount(nil) == m.MAX and m.rowCount(6) == m.MAX and m.rowCount(5) == 5)
+	check("row count = max charges", m.rowCount(2) == 2 and m.rowCount(0) == m.MAX and m.rowCount(nil) == m.MAX and m.rowCount(6) == 6 and m.rowCount(7) == 7 and m.rowCount(9) == m.MAX and m.rowCount(5) == 5)
 	check("2-knife row centred", m.armLateral(1, 2, 2) == 1 and m.armLateral(2, 2, 2) == -1)
 	local t = m.readTuning(function() return nil end, {})
 	check("arm layout default on", t.fa == 1 and t.agap == m.DEFAULTS.agap)
