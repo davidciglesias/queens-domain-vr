@@ -23,6 +23,7 @@ M.THICK = 0.2        -- bar height off the glove (cm)
 M.PIP_GAP = 0.25     -- cm between pips
 M.BG_Z = -0.15       -- plate centre (thickness M.THICK: back at -0.25, front at -0.05)
 M.FILL_Z = 0.15      -- fill centre (thickness M.THICK: 0.05..0.25), clearly proud of the plate
+M.FILL_SORT = 1      -- translucent sort priority of the fills (plates stay 0): always drawn after the plates
 
 -- ---- pure helpers (unit tested) ----
 function M.frac(cur, max)
@@ -248,6 +249,9 @@ local function part(key, color)
 	if c ~= nil and D.uevrUtils.getValid(c) ~= nil then return c end
 	c = newCube(S.hand:GetOwner(), color, key)
 	if c == nil then return nil end
+	-- step 137 (headset: HP red sometimes black by angle): the bar material is translucent + unlit, so parts sort by centre
+	-- distance, not depth; a partly filled bar's centre can be farther than its plate's and the plate drew over it. Fills last.
+	if key:sub(-3) ~= "_bg" then pcall(function() c:SetTranslucentSortPriority(M.FILL_SORT) end) end
 	pcall(function() c:K2_AttachToComponent(S.panel, D.uevrUtils.fname_from_string(""), 0, 0, 0, false) end)
 	S.parts[key] = c
 	S.vis = nil

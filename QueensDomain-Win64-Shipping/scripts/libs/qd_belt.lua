@@ -1460,8 +1460,8 @@ function M.tick(dt)
 	local spot = tonumber(get("heal_spot")) or 1 -- step 125: 1 above the elbows, 2 shoulders, 3 gloves
 	local onSh = shOn and spot == 2 -- step 124: shoulder chain (nudges read once per frame)
 	local onEl = shOn and spot == 1
-	local eLf, eLo, eLu = tonumber(get("heal_el_fwd")) or 0.0, tonumber(get("heal_el_out")) or 0.0, tonumber(get("heal_el_up")) or 0.0
-	local eRf, eRo, eRu = tonumber(get("heal_er_fwd")) or 0.0, tonumber(get("heal_er_out")) or 0.0, tonumber(get("heal_er_up")) or 0.0
+	-- step 137 (user: the left elbow heal must do what the right one does): one set of offsets, mirrored by side
+	local eBf, eBo, eBu = tonumber(get("heal_er_fwd")) or 0.0, tonumber(get("heal_er_out")) or 0.0, tonumber(get("heal_er_up")) or 0.0
 	local sLf, sLo, sLu = tonumber(get("heal_shl_fwd")) or 0.0, tonumber(get("heal_shl_out")) or 0.0, tonumber(get("heal_shl_up")) or 0.0
 	local sRf, sRo, sRu = tonumber(get("heal_shr_fwd")) or 0.0, tonumber(get("heal_shr_out")) or 0.0, tonumber(get("heal_shr_up")) or 0.0
 	-- step 120: the models face with the body yaw, not the head's
@@ -1496,8 +1496,7 @@ function M.tick(dt)
 				if okS and type(sz) == "number" then
 					local px, py, pz
 					if onEl then
-						local nf, no, nu = eLf, eLo, eLu
-						if sg > 0 then nf, no, nu = eRf, eRo, eRu end
+						local nf, no, nu = eBf, eBo, eBu
 						px, py, pz = M.elbowPoint(ex, ey, ez, sx, sy, sz, byaw, sg, M.EL_ALONG, M.EL_FWD + nf, M.EL_OUT + no, M.EL_UP + nu)
 					else
 						local nf, no, nu = sLf, sLo, sLu

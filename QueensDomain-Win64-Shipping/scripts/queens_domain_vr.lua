@@ -287,12 +287,9 @@ local configDefinition = {
 			-- step 124 (headset 2026-11-21: glove heals twitched with the hands): heals hang on a chain from the IK shoulder joints
 			-- step 125 (headset 2026-11-21b: shoulder heals ignore real shoulder moves): spot combo replaces heal_on_shoulders
 			{ widgetType = "combo", id = "heal_spot", label = "Healing items hang", selections = {"Above the elbows (upper arm, past the arm HUD)", "From the shoulders", "On the gloves"}, initialValue = 1, width = 330 },
-			{ widgetType = "slider_float", id = "heal_el_fwd", label = "Left elbow heal: forward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
-			{ widgetType = "slider_float", id = "heal_el_out", label = "Left elbow heal: outward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
-			{ widgetType = "slider_float", id = "heal_el_up", label = "Left elbow heal: up (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
-			{ widgetType = "slider_float", id = "heal_er_fwd", label = "Right elbow heal: forward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
-			{ widgetType = "slider_float", id = "heal_er_out", label = "Right elbow heal: outward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
-			{ widgetType = "slider_float", id = "heal_er_up", label = "Right elbow heal: up (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_fwd", label = "Elbow heals (both): forward (cm)", initialValue = 0.0, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_out", label = "Elbow heals (both): outward (cm)", initialValue = -7.25, range = {-20.0, 20.0} },
+			{ widgetType = "slider_float", id = "heal_er_up", label = "Elbow heals (both): up (cm)", initialValue = -4.875, range = {-20.0, 20.0} },
 			{ widgetType = "slider_float", id = "heal_shl_fwd", label = "Left shoulder heal: forward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
 			{ widgetType = "slider_float", id = "heal_shl_out", label = "Left shoulder heal: outward (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
 			{ widgetType = "slider_float", id = "heal_shl_up", label = "Left shoulder heal: up (cm)", initialValue = 0.0, range = {-30.0, 30.0} },
@@ -315,6 +312,7 @@ local configDefinition = {
 			{ widgetType = "checkbox", id = "pickup_beam_ray", label = "Pickup beam from the aiming hand to the targeted item", initialValue = false },
 			{ widgetType = "checkbox", id = "pickup_right_hand2", label = "X pickups aim with the right hand and fly into it (new layout: always; classic: while X is held)", initialValue = false },
 			{ widgetType = "checkbox", id = "lever_right_hand2", label = "X on levers, switches, chests and characters: aim with the right hand", initialValue = false }, -- step 124; s131: renamed, default off (headset 2026-11-22: right-hand X fired effects twice; left hand only)
+			{ widgetType = "slider_float", id = "item_view_cm", label = "Distance from the eyes (cm)", initialValue = 50.0, range = {10.0, 120.0} }, -- step 137
 			{ widgetType = "checkbox", id = "pickup_hide_showcase", label = "Hide the game's flat \"item comes to you\" display after a pickup (the item is already in your hand)", initialValue = true },
 			{ widgetType = "slider_float", id = "pickup_cone", label = "Pickup aim tolerance (degrees, on top of 10 cm)", initialValue = 6.0, range = {1.0, 20.0} },
 			{ widgetType = "slider_float", id = "pickup_range", label = "Pickup reach (m)", initialValue = 3.5, range = {1.0, 8.0} },
@@ -526,7 +524,7 @@ pcall(function()
 			"pickup_hide_showcase", "pickup_cone", "pickup_range", "auto_grip" } },
 		{ "Belt", { "belt", "belt_body_yaw", "belt_3d", "belt_3d_size", "belt_3d_tilt", "belt_slots", "belt_heal_card", "belt_panic_heal", "belt_ammo_card", "belt_arrows",
 			"item_hud", "grab_button", "grab_point_fwd" } },
-		{ "Healing items", { "heal_gloves", "heal_spot", "#Left elbow heal", "heal_el_fwd", "heal_el_out", "heal_el_up", "#Right elbow heal", "heal_er_fwd", "heal_er_out", "heal_er_up",
+		{ "Healing items", { "heal_gloves", "heal_spot", "#Elbow heals (left and right)", "heal_er_fwd", "heal_er_out", "heal_er_up",
 			"#Left shoulder heal", "heal_shl_fwd", "heal_shl_out", "heal_shl_up", "#Right shoulder heal", "heal_shr_fwd", "heal_shr_out", "heal_shr_up",
 			"#Left glove heal", "heal_gl_x", "heal_gl_y", "heal_gl_z", "#Right glove heal", "heal_gr_x", "heal_gr_y", "heal_gr_z" } },
 		{ "Weapon switch and cards", { "shoulder_switch", "shoulder_zone_low", "weapon_cards_up", "weapon_cards_show", "#Corner cards", "weapon_cards_up_x", "weapon_cards_up_y", "weapon_cards_up_z" } },
@@ -551,7 +549,8 @@ pcall(function()
 	local TOP = {
 		{ "=== Belt ===", { "belt_drop", "belt_fwd", "belt_side", "belt_body_yaw" } },
 		{ "=== Seated play ===", { "seated_play", "belt_drop_seated" } },
-		{ "=== Healing items ===", { "heal_spot", "#Left elbow heal", "heal_el_fwd", "heal_el_out", "heal_el_up", "#Right elbow heal", "heal_er_fwd", "heal_er_out", "heal_er_up" } },
+		{ "=== Healing items ===", { "heal_spot", "#Elbow heals (left and right)", "heal_er_fwd", "heal_er_out", "heal_er_up" } },
+		{ "=== Items shown in front of you ===", { "item_view_cm" } },
 		{ "=== Arm HUDs ===", { "#Left arm HUD (health etc., lower arm by the glove)", "arm_hud_lf_x", "arm_hud_lf_y", "arm_hud_lf_z", "arm_hud_lf_pitch", "arm_hud_lf_yaw", "arm_hud_lf_roll",
 			"#Right charge strip (lower arm by the glove)", "arm_hud_rf_x", "arm_hud_rf_y", "arm_hud_rf_z", "arm_hud_rf_pitch", "arm_hud_rf_yaw", "arm_hud_rf_roll" } },
 		{ "=== Status effects ===", { "status_fx_mode", "status_acc_icons", "#Accessories under the forearm", "acc_nudge_out", "acc_nudge_elbow", "acc_nudge_across" } },
@@ -631,6 +630,12 @@ pcall(function()
 		end
 		withRst[#withRst + 1] = it
 	end
+	-- advanced / dev options stay in the definition (values and defaults unchanged) but are hidden from the menu
+	local hideNow = false
+	for _, it in ipairs(withRst) do
+		if it.id == "adv_options" then hideNow = true end
+		if hideNow and not (it.id ~= nil and it.id:sub(1, 7) == "rst_all") then it.isHidden = true end
+	end
 	configDefinition[1].layout = withRst
 end)
 
@@ -681,7 +686,19 @@ configui.onUpdate("scale", function() currentPickupMesh.RelativeScale3D = {X= co
 
 
 uevrUtils.setDeveloperMode(true)
+-- step 137 (user: no dev clutter): the attachments dev panel stays defined (weapon offsets go through its values) but gets
+-- no page in the UEVR sidebar (configui adds the page only when isHidden is not set at creation)
+T20.cfgCreate = configui.create
+configui.create = function(def)
+	pcall(function()
+		for _, p in ipairs(def) do
+			if type(p.panelLabel) == "string" and p.panelLabel:find("Config Dev", 1, true) then p.isHidden = true end
+		end
+	end)
+	return T20.cfgCreate(def)
+end
 attachments.init()
+configui.create = T20.cfgCreate
 
 
 
@@ -4050,7 +4067,7 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 		local okF, errF = pcall(T20.fingerfit.tick, delta, configui.getValue("weapon_grip_fit") ~= false and configui.getValue("hand_pose_driver") ~= false)
 		if not okF and not T20.fingerfitErr then T20.fingerfitErr = true uevr.params.functions.log_info("[FIT] error: " .. tostring(errF)) end
 	end
-	pcall(T20.camKidsPoll) -- s131 discovery
+	if T20.itemview ~= nil then pcall(T20.itemview.tick, delta) end -- step 137
 	if T20.statusfx ~= nil then -- step 122e: off in menus/pause (widgets restored, camera reset)
 		local okF, errF = pcall(T20.statusfx.tick, delta, regularPlayLast == true and configui.getValue("status_fx_eyes") ~= false, configui.getValue("status_fx_mode"))
 		if not okF and not T20.statusfxErr then T20.statusfxErr = true uevr.params.functions.log_info("[FX] error: " .. tostring(errF)) end
@@ -4203,43 +4220,14 @@ function T20.logGameTarget()
 	uevr.params.functions.log_info(string.format("[PICKUP] game target class chain %s | in pickup list=%s | off right ray %.0f cm",
 		table.concat(chain, " < "), tostring(known), d))
 end
--- s131 discovery (headset 2026-11-22: eaten / auto-shown items sit too close to the eyes): 2 Hz, the children (two
--- levels) of pawn.CameraAttachedComp and pawn.FirstPersonCamera; on a count change logs each "[CAMKIDS] ..." with
--- class, visibility and distance from the camera. Log only, nothing moved.
-T20.camKids = { t = 0.0, n = -1 }
-function T20.camKidsPoll()
-	local now = os.clock()
-	if now - T20.camKids.t < 0.5 then return end
-	T20.camKids.t = now
-	local pawn = api:get_local_pawn(0)
-	if pawn == nil then return end
-	local roots = { pawn.CameraAttachedComp, pawn.FirstPersonCamera }
-	local list = {}
-	for _, r in ipairs(roots) do
-		if r ~= nil then
-			for _, c in ipairs(r.AttachChildren or {}) do
-				if c ~= nil then
-					list[#list + 1] = c
-					pcall(function() for _, c2 in ipairs(c.AttachChildren or {}) do if c2 ~= nil then list[#list + 1] = c2 end end end)
-				end
-			end
-		end
-	end
-	if #list == T20.camKids.n then return end
-	T20.camKids.n = #list
-	local cam = pawn.FirstPersonCamera
-	local cl = cam ~= nil and cam:K2_GetComponentLocation() or nil
-	uevr.params.functions.log_info("[CAMKIDS] count " .. #list)
-	for i, c in ipairs(list) do
-		pcall(function()
-			local l = c:K2_GetComponentLocation()
-			local d = cl ~= nil and math.sqrt((l.X - cl.X) ^ 2 + (l.Y - cl.Y) ^ 2 + (l.Z - cl.Z) ^ 2) or -1
-			local o = c:GetOwner()
-			uevr.params.functions.log_info(string.format("[CAMKIDS] %d %s %s owner=%s vis=%s dist=%.0f cm", i, c:get_class():get_fname():to_string(),
-				c:get_fname():to_string(), o ~= nil and o:get_class():get_fname():to_string() or "nil", tostring(c:IsVisible()), d))
-		end)
-	end
-end
+-- step 137 (headset 2026-11-22 / 24: picked up and shown items too close to the eyes): libs/qd_itemview.lua
+T20.itemviewOk, T20.itemviewErr = pcall(function()
+	T20.itemview = require("libs/qd_itemview")
+	T20.itemview.init({ uevrUtils = uevrUtils, api = api, getValue = configui.getValue,
+		log = function(m) uevr.params.functions.log_info(m) end })
+	QD.itemview = T20.itemview
+end)
+if not T20.itemviewOk then T20.itemview = nil uevr.params.functions.log_info("[ITEMVIEW] load error: " .. tostring(T20.itemviewErr)) end
 -- step 124 (headset 2026-11-21: levers only answer the left-hand aim): on an X press the right index traces
 -- T20.LEVER_RANGE cm; an actor hit (or its attach parent) with the game's GetInteractInfo + Interact functions (levers,
 -- lifts, switches; class-agnostic) that says it is interactible gets Interact(pawn) and the press is ours (option
