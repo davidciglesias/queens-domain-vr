@@ -459,6 +459,7 @@ local function create()
 	end
 	local mesh = rig.meshList[1]
 	st.rig, st.mesh, st.hidden, st.bodyYaw = rig, mesh, false, nil
+	pcall(function() mesh:SetTickableWhenPaused(true) end) -- step 138: the Start menu pauses the game; without it the arms froze there while the gloves kept moving
 	mesh:SetAbsolute(true, true, true) -- placed in world space every tick (place)
 	mesh:SetRelativeScale3D(D.uevrUtils.vector(M.SCALE, M.SCALE, M.SCALE))
 	M.applyHide() -- fingers (or whole hands, M.HIDE_HAND) come from the hands lib meshes

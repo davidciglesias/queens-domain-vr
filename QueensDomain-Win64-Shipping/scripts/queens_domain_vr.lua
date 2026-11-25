@@ -3811,6 +3811,38 @@ function T20.rgXInput(g, now)
 		if now < (T20.rgUntil or 0) then g.wButtons = g.wButtons & ~XINPUT_GAMEPAD_RIGHT_SHOULDER end
 	end
 end
+-- step 138 (headset 2026-11-25: with a ranged weapon in the right hand the pickup / interact aim moved to the right hand):
+-- the left hand keeps the aim (grabs, levers, knives) and the right hand takes it only around a shot. The trigger press
+-- (attack or alt) is held back until the engine tick has switched the aim (RR_FIRE_DELAY and two ticks, RR_FIRE_MAX at
+-- most), it stays right while a trigger is down and RR_FIRE_KEEP after. A tap shorter than that is delivered as a pulse
+-- afterwards. X (grab / interact) ends the window at once. The switch itself is made by applyNormalModeSettings: done from
+-- this callback it would drop the left aim's view offset and turn the view (about 33 deg per shot on the fake headset).
+T20.RR_FIRE_DELAY = 0.06
+T20.RR_FIRE_MAX = 0.2
+T20.RR_FIRE_KEEP = 0.9
+T20.RR_TAP_S = 0.05
+T20.rf = { prev = false, untilT = 0.0, t0 = 0.0, wait = false, ticks = 0, pulseT = 0.0, pr = false, pl = false }
+function T20.rrFireXInput(g, now)
+	local F = T20.rf
+	local r, l = g.bRightTrigger > 200, g.bLeftTrigger > 200
+	local any = r or l
+	if any and not F.prev and now >= F.untilT then -- fresh press with the left aim on
+		F.wait, F.t0, F.ticks, F.pr, F.pl = true, now, 0, false, false
+	end
+	if any then F.untilT = now + T20.RR_FIRE_KEEP end
+	F.prev = any
+	if F.wait then -- the game does not see this press yet
+		if r then F.pr = true g.bRightTrigger = 0 end
+		if l then F.pl = true g.bLeftTrigger = 0 end
+		if F.pr or F.pl then F.untilT = now + T20.RR_FIRE_KEEP end
+		local age = now - F.t0
+		if (age >= T20.RR_FIRE_DELAY and F.ticks >= 2) or age >= T20.RR_FIRE_MAX then F.wait, F.pulseT = false, now + T20.RR_TAP_S end
+	elseif now < F.pulseT then -- released inside the delay: deliver a short pulse
+		if F.pr and not r then g.bRightTrigger = 255 end
+		if F.pl and not l then g.bLeftTrigger = 255 end
+	end
+	if not any and not F.wait and now >= F.pulseT and (g.wButtons & XINPUT_GAMEPAD_X) ~= 0 then F.untilT = 0.0 end -- X: interact with the left aim
+end
 function T20.rrXInput(state)
 	local g = state.Gamepad
 	local now = os.clock()
@@ -3824,6 +3856,7 @@ function T20.rrXInput(state)
 	if lbRaw and not T20.tfLbPrev and T20.throw ~= nil then pcall(T20.throw.arm) end
 	T20.tfLbPrev = lbRaw
 	if T20.rrOn ~= true then T20.rrLbPrev = false return end
+	if normalPlay == true then pcall(T20.rrFireXInput, g, now) end -- step 138: the right hand aims only around a shot
 	-- step 106: in the new layout the weapon jump (game RB) comes from the left grip -> left-hand aim like a throw
 	local mask = XINPUT_GAMEPAD_LEFT_SHOULDER
 	if T20.phys.on then mask = mask | XINPUT_GAMEPAD_RIGHT_SHOULDER end
@@ -3831,7 +3864,7 @@ function T20.rrXInput(state)
 	if lb and not T20.rrLbPrev then
 		T20.rrThrowT = now + T20.RR_THROW_S
 		T20.rrLbUntil = now + T20.RR_LB_DELAY
-		pcall(function() vr.set_mod_value("VR_AimMethod", "3") end)
+		if T20.la.on ~= true then pcall(function() vr.set_mod_value("VR_AimMethod", "3") end) end -- step 138: the left aim already on keeps its view offset
 	end
 	T20.rrLbPrev = lb
 	if lb and now < (T20.rrLbUntil or 0) then g.wButtons = g.wButtons & ~mask end
@@ -3853,14 +3886,16 @@ function applyNormalModeSettings(delta)
 		if nativeDodgeAimLeft <= 0 then pcall(restoreDodgeFacing) end
 	end
 	pcall(T20.rrTick, delta)
-	-- step 54: right-hand ranged weapon -> right controller aims (2), except just after a left grip (throw window)
-	local rrAim = T20.rrOn == true and os.clock() >= (T20.rrThrowT or 0)
+	-- step 54: right-hand ranged weapon -> right controller aims (2), except just after a left grip (throw window);
+	-- step 138: only around a shot (T20.rrFireXInput), else the left hand aims (pickups, levers)
+	local rrAim = T20.rrOn == true and os.clock() < T20.rf.untilT and os.clock() >= (T20.rrThrowT or 0)
 	if os.clock() < (T20.rgAimT or 0) then rrAim = true end -- step 57: right grip move window
 	T20.la.was, T20.la.on = T20.la.on, false -- step 79c: set again by T20.laTick while it drives the left aim
 	if nativeDodgeAimLeft > 0 then
 		vr.set_mod_value("VR_AimMethod", "1") -- test 9: HMD aim while the native dodge plays
 	elseif rrAim then
 		vr.set_mod_value("VR_AimMethod", "2")
+		T20.rf.ticks = T20.rf.ticks + 1
 		if showLaser and currentCompass ~= nil and not aimDotEnabled() then currentCompassWidgetComponent:SetVisibility(false, true) end
 	elseif showLaser then
 		-- step 79c: aim along the fingers = method 0 + the script's own control rotation (T20.laTick); else UEVR's left aim
@@ -4068,6 +4103,7 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 		if not okF and not T20.fingerfitErr then T20.fingerfitErr = true uevr.params.functions.log_info("[FIT] error: " .. tostring(errF)) end
 	end
 	if T20.itemview ~= nil then pcall(T20.itemview.tick, delta) end -- step 137
+	if T20.gunfix ~= nil then pcall(T20.gunfix.tick) end -- step 138
 	if T20.statusfx ~= nil then -- step 122e: off in menus/pause (widgets restored, camera reset)
 		local okF, errF = pcall(T20.statusfx.tick, delta, regularPlayLast == true and configui.getValue("status_fx_eyes") ~= false, configui.getValue("status_fx_mode"))
 		if not okF and not T20.statusfxErr then T20.statusfxErr = true uevr.params.functions.log_info("[FX] error: " .. tostring(errF)) end
@@ -4228,6 +4264,38 @@ T20.itemviewOk, T20.itemviewErr = pcall(function()
 	QD.itemview = T20.itemview
 end)
 if not T20.itemviewOk then T20.itemview = nil uevr.params.functions.log_info("[ITEMVIEW] load error: " .. tostring(T20.itemviewErr)) end
+-- step 138 (headset 2026-11-25: shots of the ranged weapons do not connect when the target is close): libs/qd_gunfix.lua
+T20.gunfixOk, T20.gunfixErr = pcall(function()
+	T20.gunfix = require("libs/qd_gunfix")
+	local outs = {}
+	for q = 1, 17 do outs[q] = {} end
+	T20.gunfix.init({
+		all = function()
+			if T20.gunPmCls == nil then T20.gunPmCls = api:find_uobject("Class /Script/Engine.ProjectileMovementComponent") end
+			if T20.gunPmCls == nil then return nil end
+			return UEVR_UObjectHook.get_objects_by_class(T20.gunPmCls, false)
+		end,
+		log = function(m) uevr.params.functions.log_info(m) end,
+		getPawn = function() return api:get_local_pawn(0) end,
+		getWorld = function() return uevrUtils.get_world() end,
+		ksl = function() return kismet_system_library end,
+		gs = function()
+			if T20.rbGs == nil then T20.rbGs = api:find_uobject("Class /Script/Engine.GameplayStatics"):get_class_default_object() end
+			return T20.rbGs
+		end,
+		hit = reusable_hit_result, col = aimColor, outs = outs,
+		vec = function(x, y, z) return Vector3d.new(x, y, z) end,
+		classes = function() -- once, on the first shot: the base classes whose instances have an HP (subclasses included)
+			local out = {}
+			for i, n in ipairs({ "/Game/Enemies/EnemyBase.EnemyBase_C", "/Game/Props/Containers/Permabreakable_base.Permabreakable_base_C" }) do
+				local c = api:find_uobject("BlueprintGeneratedClass " .. n)
+				if c ~= nil then out[#out + 1] = { cls = c, kind = i == 1 and "enemy" or "perm" } end
+			end
+			return out
+		end })
+	QD.gunfix = T20.gunfix
+end)
+if not T20.gunfixOk then T20.gunfix = nil uevr.params.functions.log_info("[GUNFIX] load error: " .. tostring(T20.gunfixErr)) end
 -- step 124 (headset 2026-11-21: levers only answer the left-hand aim): on an X press the right index traces
 -- T20.LEVER_RANGE cm; an actor hit (or its attach parent) with the game's GetInteractInfo + Interact functions (levers,
 -- lifts, switches; class-agnostic) that says it is interactible gets Interact(pawn) and the press is ours (option
@@ -4888,6 +4956,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 							pcall(function() local pw = api:get_local_pawn(0) if pw.AttackPressed ~= true then pw.AttackPressed = true end end)
 							T20.rrHeldFlag = true
 						end
+						if T20.rrOn == true and T20.gunfix ~= nil then pcall(T20.gunfix.arm) end -- step 138
 						if rightTriggerHeld == false then --need to only call once, since calling ti again, cancels current call
 							if T20.rrOn == true and T20.throw ~= nil and T20.throw.gunArm ~= nil then pcall(T20.throw.gunArm) end -- step 127b discovery
 							local okRb, buffered = pcall(T20.rbPress, activeWeapon)
@@ -4940,6 +5009,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 						local ranged = T20.rrOn == true
 						local stabMode = not ranged and configui.getValue("l2_stab_gesture") ~= false and configui.getValue("6dof_right") == true
 						if state.Gamepad.bLeftTrigger > 200 or (l2DodgeHeld and state.Gamepad.bLeftTrigger > 100) then
+							if ranged and T20.gunfix ~= nil then pcall(T20.gunfix.arm) end -- step 138
 							if not l2DodgeHeld then
 								if ranged then
 									local okA, errA = pcall(function() activeWeapon:AltAttackPressed() end)
@@ -4960,6 +5030,7 @@ uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
 								l2StabArmed = false -- a stab's alt attack is released by its own timer
 							else
 								activeWeapon:AltAttackReleased()
+								if ranged and T20.gunfix ~= nil then pcall(T20.gunfix.arm) end -- step 138: a charged shot leaves now
 								if ranged and T20.throw ~= nil and T20.throw.gunArm ~= nil then pcall(T20.throw.gunArm, true) end -- step 130: track the released alt shot (charging projectile already exists -> fresh)
 							end
 							l2DodgeHeld = false

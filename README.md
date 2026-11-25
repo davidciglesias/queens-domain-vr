@@ -1,7 +1,7 @@
 # Queen's Domain VR
 
 An unofficial VR mod for Queen's Domain, running through [UEVR](https://github.com/praydog/UEVR).
-Version 0.1.
+Version 0.1.1.
 
 ## Features
 
